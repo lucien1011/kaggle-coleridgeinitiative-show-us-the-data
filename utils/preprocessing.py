@@ -1,33 +1,44 @@
 import os
 import re
+import json
 import string
 
 train_files_path = 'input/train'
 test_files_path = 'input/test'
+sec_divider = '|||||||'
 
 def json_to_text(filename, train_files_path=train_files_path, output='text'):
     json_path = os.path.join(train_files_path, (filename+'.json'))
     headings = []
     contents = []
-    combined = []
     with open(json_path, 'r') as f:
         json_decode = json.load(f)
         for data in json_decode:
             headings.append(data.get('section_title'))
             contents.append(data.get('text'))
-            combined.append(data.get('section_title'))
-            combined.append(data.get('text'))
     
-    all_headings = ' '.join(headings)
-    all_contents = ' '.join(contents)
-    all_data = '. '.join(combined)
+    #all_headings = sec_divider.join(headings)
+    #all_contents = sec_divider.join(contents)
     
     if output == 'text':
         return all_contents
     elif output == 'head':
         return all_headings
-    else:
-        return all_data
+
+def json_to_list(filename, train_files_path=train_files_path, output='text'):
+    json_path = os.path.join(train_files_path, (filename+'.json'))
+    headings = []
+    contents = []
+    with open(json_path, 'r') as f:
+        json_decode = json.load(f)
+        for data in json_decode:
+            headings.append(data.get('section_title'))
+            contents.append(data.get('text'))
+    
+    if output == 'text':
+        return contents
+    elif output == 'head':
+        return headings
 
 def text_cleaning(text):
     text = ''.join([k for k in text if k not in string.punctuation])
