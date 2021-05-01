@@ -6,6 +6,7 @@ from official.nlp import optimization
 
 from utils.objdict import ObjDict
 
+# __________________________________________________________________ ||
 def build_classifier_model(tfhub_handle_preprocess,tfhub_handle_encoder):
     text_input = tf.keras.layers.Input(shape=(), dtype=tf.string, name='text')
     preprocessing_layer = hub.KerasLayer(tfhub_handle_preprocess, name='preprocessing')
@@ -25,6 +26,7 @@ def build_classifier_model(tfhub_handle_preprocess,tfhub_handle_encoder):
     net = tf.keras.layers.Dense(1, activation='sigmoid', name='classifier')(net)
     return tf.keras.Model(text_input, net)
 
+# __________________________________________________________________ ||
 config = ObjDict(
 
     name = "optimise_classifier_210501_01",
@@ -43,5 +45,6 @@ config = ObjDict(
     saved_model_path = 'saved_model/optimise_classifier_210501_01',
 )
 
+# __________________________________________________________________ ||
 config.input_np_dir = "data/"+config.name+"/"
 config.model = build_classifier_model(config.tfhub_handle_preprocess,config.tfhub_handle_encoder)

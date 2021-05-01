@@ -30,7 +30,7 @@ class ClassifierPipeline(Pipeline):
                 x=self.x_train,
                 y=self.y_train,
                 sample_weight=self.sample_weight_train,
-                validation_data=(self.x_train,self.y_train),
+                validation_data=(self.x_val,self.y_val),
                 epochs=self.cfg.epochs,
                 #batch_size=512,
                 )
