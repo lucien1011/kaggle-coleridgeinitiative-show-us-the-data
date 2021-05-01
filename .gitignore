@@ -1,0 +1,6 @@
+__pycache__/
+*.sw*
+*.log
+data/
+input/
+saved_model/
