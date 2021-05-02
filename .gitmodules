@@ -1,0 +1,3 @@
+[submodule "SLURMWorker"]
+	path = SLURMWorker
+	url = git@github.com:lucien1011/SLURMWorker.git
