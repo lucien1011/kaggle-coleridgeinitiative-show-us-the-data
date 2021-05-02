@@ -43,6 +43,7 @@ config = ObjDict(
     epochs = 5,
 
     saved_model_path = 'saved_model/optimise_classifier_210501_01',
+    saved_history_path = 'saved_model/optimise_classifier_210501_01/history.p',
 )
 
 # __________________________________________________________________ ||
