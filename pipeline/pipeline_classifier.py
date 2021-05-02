@@ -1,4 +1,5 @@
 import os
+import pickle
 import numpy as np
 
 from pipeline import Pipeline
@@ -26,7 +27,7 @@ class ClassifierPipeline(Pipeline):
                 loss=self.cfg.loss,
                 metrics=self.cfg.metrics,
                 )
-        history = self.cfg.model.fit(
+        self.cfg.history = self.cfg.model.fit(
                 x=self.x_train,
                 y=self.y_train,
                 sample_weight=self.sample_weight_train,
@@ -36,7 +37,8 @@ class ClassifierPipeline(Pipeline):
                 )
 
     def save(self):
-        self.cfg.model.save(cfg.save_model_path)
+        self.cfg.model.save(self.cfg.saved_model_path)
+        pickle.dump(self.cfg.history,open(self.cfg.saved_history_path,"wb"))
 
     def custom_train(self):
         pass
