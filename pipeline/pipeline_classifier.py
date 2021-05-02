@@ -33,7 +33,8 @@ class ClassifierPipeline(Pipeline):
                 sample_weight=self.sample_weight_train,
                 validation_data=(self.x_val,self.y_val),
                 epochs=self.cfg.epochs,
-                #batch_size=512,
+                callbacks=[self.cfg.callback],
+                batch_size=self.cfg.batch_size,
                 )
 
     def save(self):

@@ -31,8 +31,10 @@ config = ObjDict(
     loss = tf.keras.losses.BinaryCrossentropy(),
     metrics = tf.keras.metrics.AUC(),
     optimizer = tf.keras.optimizers.Adam(),
+    batch_size = 32,
+    callback = tf.keras.callbacks.EarlyStopping(monitor='val_auc', patience=5),
 
-    epochs = 5,
+    epochs = 100,
 
     saved_model_path = 'saved_model/optimise_classifier_210502_smallbert_en_uncased_L2_H128_A2',
     saved_history_path = 'saved_model/optimise_classifier_210502_smallbert_en_uncased_L2_H128_A2/history.p',
@@ -49,7 +51,6 @@ config.slurm_commands = """echo \"{job_name}\"
 cd {base_path}
 source setup_hpg.sh
 python3 {pyscript} {cfg_path}
-cp /scratch/local/$SLURM_JOBID/%j.log {output_path}
 """.format(
             job_name=config.name,
             pyscript="optimise_classifier.py",

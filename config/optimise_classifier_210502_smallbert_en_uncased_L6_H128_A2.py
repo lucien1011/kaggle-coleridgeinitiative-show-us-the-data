@@ -49,7 +49,6 @@ config.slurm_commands = """echo \"{job_name}\"
 cd {base_path}
 source setup_hpg.sh
 python3 {pyscript} {cfg_path}
-cp /scratch/local/$SLURM_JOBID/%j.log {output_path}
 """.format(
             job_name=config.name,
             pyscript="optimise_classifier.py",
