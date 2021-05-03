@@ -15,5 +15,6 @@ for ks in sys.argv[2].split(","):
     for k in ks.split(":"):
         epochs = histd[k]
         nepoch = len(histd[k])
-        plt.plot(range(nepoch),histd[k])
-    plt.savefig(os.path.join(cfg.saved_model_path+'/',ks+'.png'))
+        plt.plot(range(nepoch),histd[k],label=k)
+    plt.legend(loc='best')
+    plt.savefig(os.path.join(cfg.saved_model_path,ks+'.png'))
