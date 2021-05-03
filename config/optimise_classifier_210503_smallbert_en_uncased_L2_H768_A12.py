@@ -7,7 +7,7 @@ from official.nlp import optimization
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-name = "optimise_classifier_210502_smallbert_en_uncased_L2_H768_A12"
+name = "optimise_classifier_210503_smallbert_en_uncased_L2_H768_A12"
 
 # __________________________________________________________________ ||
 def build_classifier_model(tfhub_handle_preprocess,tfhub_handle_encoder):
@@ -35,7 +35,9 @@ config = ObjDict(
     metrics = tf.keras.metrics.AUC(),
     optimizer = tf.keras.optimizers.Adam(),
     batch_size = 32,
-    callback = tf.keras.callbacks.EarlyStopping(monitor='val_auc', patience=10, restore_best_weights=True),
+    callbacks = [
+        tf.keras.callbacks.EarlyStopping(monitor='val_auc', patience=3, restore_best_weights=True, mode='max'),
+        ],
 
     epochs = 100,
 
@@ -46,7 +48,7 @@ config = ObjDict(
 # __________________________________________________________________ ||
 config.input_np_dir = "data/optimise_classifier_210501_01/" 
 config.model = build_classifier_model(config.tfhub_handle_preprocess,config.tfhub_handle_encoder)
-config.checkpoint = tf.keras.callbacks.ModelCheckpoint(config.saved_model_path,monitor='val_auc',)
+config.checkpoint = None
 
 # __________________________________________________________________ ||
 config.slurm_cfg_name = 'submit.cfg'
