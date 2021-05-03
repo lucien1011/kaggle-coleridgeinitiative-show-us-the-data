@@ -9,17 +9,17 @@ class ClassifierPipeline(Pipeline):
         self.cfg = cfg
 
     def read_np_dir(self):
-        self.x_train = np.load(os.path.join(self.cfg.input_np_dir,"x_train.npy"),allow_pickle=True,)
-        self.y_train = np.load(os.path.join(self.cfg.input_np_dir,"y_train.npy"))
-        self.sample_weight_train = np.load(os.path.join(self.cfg.input_np_dir,"sample_weight_train.npy"))
+        self.x_train = np.load(self.cfg.x_train_path,allow_pickle=True,)
+        self.y_train = np.load(self.cfg.y_train_path)
+        self.sample_weight_train = np.load(self.cfg.sample_weight_train_path)
 
-        self.x_val = np.load(os.path.join(self.cfg.input_np_dir,"x_val.npy"),allow_pickle=True,)
-        self.y_val = np.load(os.path.join(self.cfg.input_np_dir,"y_val.npy"))
-        self.sample_weight_val = np.load(os.path.join(self.cfg.input_np_dir,"sample_weight_val.npy")) 
+        self.x_val = np.load(self.cfg.x_val_path,allow_pickle=True,)
+        self.y_val = np.load(self.cfg.y_val_path)
+        self.sample_weight_val = np.load(self.cfg.sample_weight_val_path) 
 
-        self.x_test = np.load(os.path.join(self.cfg.input_np_dir,"x_test.npy"),allow_pickle=True,)
-        self.y_test = np.load(os.path.join(self.cfg.input_np_dir,"y_test.npy"))
-        self.sample_weight_test = np.load(os.path.join(self.cfg.input_np_dir,"sample_weight_test.npy"))
+        self.x_test = np.load(self.cfg.x_test_path,allow_pickle=True,)
+        self.y_test = np.load(self.cfg.y_test_path)
+        self.sample_weight_test = np.load(self.cfg.sample_weight_test_path)
 
     def train(self):
         self.cfg.model.compile(

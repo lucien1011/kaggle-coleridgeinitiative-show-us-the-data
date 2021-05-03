@@ -34,14 +34,14 @@ sample_weight_test = (y_test==0)*(1./(1-frac)/2.) + (y_test==1)*(1./(frac)/2.)
 mkdir_p(cfg.input_np_dir)
 
 # __________________________________________________________________ ||
-np.save(os.path.join(cfg.input_np_dir,"x_train.npy"),x_train)
-np.save(os.path.join(cfg.input_np_dir,"y_train.npy"),y_train)
-np.save(os.path.join(cfg.input_np_dir,"sample_weight_train.npy"),sample_weight_train)
+np.save(cfg.x_train_path,x_train)
+np.save(cfg.y_train_path,y_train)
+np.save(cfg.sample_weight_train_path,sample_weight_train)
 
-np.save(os.path.join(cfg.input_np_dir,"x_val.npy"),x_val)
-np.save(os.path.join(cfg.input_np_dir,"y_val.npy"),y_val)
-np.save(os.path.join(cfg.input_np_dir,"sample_weight_val.npy"),sample_weight_val)
+np.save(cfg.x_val_path,x_val)
+np.save(cfg.y_val_path,y_val)
+np.save(cfg.sample_weight_val_path,sample_weight_val)
 
-np.save(os.path.join(cfg.input_np_dir,"x_test.npy"),x_test)
-np.save(os.path.join(cfg.input_np_dir,"y_test.npy"),y_test)
-np.save(os.path.join(cfg.input_np_dir,"sample_weight_test.npy"),sample_weight_test)
+np.save(cfg.x_test_path,x_test)
+np.save(cfg.y_test_path,y_test)
+np.save(cfg.sample_weight_test_path,sample_weight_test)

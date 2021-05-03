@@ -7,8 +7,9 @@ from official.nlp import optimization
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-name = "optimise_classifier_210503_smallbert_en_uncased_L2_H768_A12"
+name = "optimise_classifier_210503_smallbert_en_uncased_L2_H768_A12_NoSampleWeight"
 input_df = "data/train_lite.csv"
+input_np_dir = "data/optimise_classifier_210501_01/" 
 
 # __________________________________________________________________ ||
 def build_classifier_model(tfhub_handle_preprocess,tfhub_handle_encoder):
@@ -29,17 +30,17 @@ config = ObjDict(
 
     input_df = input_df,
 
-    x_train_path = os.path.join(input_df,"x_train.npy"),
-    y_train_path = os.path.join(input_df,"y_train.npy"),
-    sample_weight_train_path = os.path.join(input_df,"sample_weight_train.npy"),
+    x_train_path = os.path.join(input_np_dir,"x_train.npy"),
+    y_train_path = os.path.join(input_np_dir,"y_train.npy"),
+    sample_weight_train_path = os.path.join(input_np_dir,"identical_sample_weight_train.npy"),
 
-    x_val_path = os.path.join(input_df,"x_val.npy"),
-    y_val_path = os.path.join(input_df,"y_val.npy"),
-    sample_weight_val_path = os.path.join(input_df,"sample_weight_val.npy"),
+    x_val_path = os.path.join(input_np_dir,"x_val.npy"),
+    y_val_path = os.path.join(input_np_dir,"y_val.npy"),
+    sample_weight_val_path = os.path.join(input_np_dir,"sample_weight_val.npy"),
 
-    x_test_path = os.path.join(input_df,"x_test.npy"),
-    y_test_path = os.path.join(input_df,"y_test.npy"),
-    sample_weight_test_path = os.path.join(input_df,"sample_weight_test.npy"),
+    x_test_path = os.path.join(input_np_dir,"x_test.npy"),
+    y_test_path = os.path.join(input_np_dir,"y_test.npy"),
+    sample_weight_test_path = os.path.join(input_np_dir,"sample_weight_test.npy"),
 
     tfhub_handle_preprocess='https://tfhub.dev/tensorflow/bert_en_uncased_preprocess/3',
     tfhub_handle_encoder = 'https://tfhub.dev/tensorflow/small_bert/bert_en_uncased_L-2_H-768_A-12/2',
@@ -59,7 +60,7 @@ config = ObjDict(
 )
 
 # __________________________________________________________________ ||
-config.input_np_dir = "data/optimise_classifier_210501_01/" 
+config.input_np_dir = input_np_dir 
 config.model = build_classifier_model(config.tfhub_handle_preprocess,config.tfhub_handle_encoder)
 config.checkpoint = None
 
