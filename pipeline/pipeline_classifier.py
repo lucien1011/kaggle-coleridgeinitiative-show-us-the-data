@@ -33,12 +33,13 @@ class ClassifierPipeline(Pipeline):
                 sample_weight=self.sample_weight_train,
                 validation_data=(self.x_val,self.y_val),
                 epochs=self.cfg.epochs,
-                callbacks=[self.cfg.callback],
+                callbacks=self.cfg.callbacks,
                 batch_size=self.cfg.batch_size,
                 )
 
     def save(self):
-        self.cfg.model.save(self.cfg.saved_model_path)
+        if not self.cfg.checkpoint:
+            self.cfg.model.save(self.cfg.saved_model_path)
         pickle.dump(self.cfg.history.history,open(self.cfg.saved_history_path,"wb"))
 
     def custom_train(self):
