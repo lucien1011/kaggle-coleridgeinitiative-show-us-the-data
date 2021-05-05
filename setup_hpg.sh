@@ -1,4 +1,8 @@
 export PYTHONPATH=${PYTHONPATH}:${PWD}/
 export BASE_PATH=${PWD}
 
-module load tensorflow/2.4.1
+if [[ "$HOSTNAME" == login*ufhpc ]]; then
+    echo "Loading modules"
+    module load tensorflow/2.4.1
+    module load git
+fi
