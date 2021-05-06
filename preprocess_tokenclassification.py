@@ -3,79 +3,58 @@ import json
 import sys
 import pandas as pd
 
-import nltk
-from nltk.tokenize import sent_tokenize
-from transformers import AutoTokenizer
+from datasets import load_dataset
+from transformers import AutoTokenizer,AutoModelForTokenClassification, TrainingArguments, Trainer
 
 from utils.preprocessing import json_to_text,json_to_list
 from utils.progressbar import progressbar
 from utils.objdict import ObjDict
 from utils.mkdir_p import mkdir_p
 
-def make_token_label(ls,ws):
-    nl = len(ls)
-    nw = len(ws)
-    il = 0
-    iw = 0
-    out = [0 for w in ws]
-    while iw < nw:
-        if ws[iw] == ls[il] and all([ws[iw+j+1] == ls[il+j+1] for j,l in enumerate(ls[1:])]):
-            for j,l in enumerate(ls):
-                out[iw+j] = 1
-            return out
-        iw += 1
+# __________________________________________________________________ ||
+def make_label(input_ids,dataset_ids,length):
+    start_index = 1
+    dataset_length = len(dataset_ids)-2
+    while not all([input_ids[start_index+i] == dataset_ids[i] for i in range(dataset_length)]):
+        start_index += 1
+        
+    output = [0 for _ in range(length)]
+    for i in range(dataset_length):
+        output[start_index+i] = 1
+    return output
 
-    #out = [0 for w in ws]
-    #for l in ls:
-    #    try:
-    #        out[ws.index(l)] = 1
-    #    except ValueError:
-    #        print(ls,ws)
-    #        #raise ValueError
-    #return out
+def convert_type(input_dict):
+    
+    tokenized_inputs = tokenizer(input_dict['sentence'],truncation=True,padding=True)
+    
+    labels = []
+    for i,dataset in enumerate(input_dict['dataset']):
+        tokenized_dataset = tokenizer(dataset)
+        
+        labels.append(make_label(tokenized_inputs.input_ids[i],tokenized_dataset['input_ids'][1:-1],sum(tokenized_inputs.attention_mask[i])))
+    
+    tokenized_inputs['labels'] = labels
+    return tokenized_inputs
 
 # __________________________________________________________________ ||
 cfg = ObjDict.read_from_file_python3(sys.argv[1])
 verbose = True
 
 # __________________________________________________________________ ||
-df = pd.read_csv(cfg.input_train_df)
+datasets = load_dataset("csv",data_files=[cfg.input_seq_df,])
+dataset = datasets['train'].remove_columns("Unnamed: 0.1")
+dataset = dataset.remove_columns("token")
+dataset = dataset.remove_columns("index")
+dataset = dataset.remove_columns("label")
+dataset = dataset.remove_columns("hasDataset")
 
 # __________________________________________________________________ ||
-model_checkpoint = "distilbert-base-uncased"
-tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-#tokenizer = nltk.tokenize.RegexpTokenizer(r'\w+')
-#lemmatizer = nltk.stem.WordNetLemmatizer()
+tokenizer = AutoTokenizer.from_pretrained(cfg.model_checkpoint)
 
 # __________________________________________________________________ ||
-out_dict = {
-        "token": list(), 
-        "label": list(),
-        "section": list(),
-        "dataset": list(),
-        "sentence": list(),
-        "hasDataset": list(),
-        }
-for i,textId in enumerate(df['Id']):
- 
-    if verbose and i % 100 == 0: progressbar(i,df.shape[0])
-    tokenized_label = tokenizer.convert_ids_to_tokens(tokenizer(df['dataset_label'][i])['input_ids'])
+processed_dataset = dataset.map(convert_type,batched=True)
+dataset_dict = processed_dataset.train_test_split(test_size=0.1)
 
-    json_path = os.path.join(cfg.input_train_json, (textId+'.json'))
-    with open(json_path, 'r') as f:
-        json_decode = json.load(f)
-        for isec,sec in enumerate(json_decode):
-            token_sentences = sent_tokenize(sec['text'])
-            tokens = [tokenizer.convert_ids_to_tokens(tokenizer(sen)['input_ids']) for sen in token_sentences]
-            #tokens = [ [lemmatizer.lemmatize(t) for t in tokenizer.tokenize(sen)] for sen in token_sentences]
-            tokenized_labels = [tokenized_label[1:-1] for sen in token_sentences] 
-            out_dict['token'].extend(tokens)
-            out_dict['section'].extend([sec['section_title'] for sen in token_sentences])
-            out_dict['label'].extend([ [0 for _ in tokens[isen]] if df['dataset_label'][i] not in sen else make_token_label(tokenized_labels[isen],tokens[isen]) for isen,sen in enumerate(token_sentences)])
-            out_dict['sentence'].extend(token_sentences)
-            out_dict['dataset'].extend([df['dataset_label'][i] for sen in token_sentences])
-            out_dict['hasDataset'].extend([int(df['dataset_label'][i] in sen) for sen in token_sentences])
-
-out_df = pd.DataFrame(out_dict)
-mkdir_p(cfg.input_np_dir)
-out_df.to_csv(os.path.join(cfg.input_np_dir,'train.csv'))
+# __________________________________________________________________ ||
+mkdir_p(cfg.input_dataset_dir)
+dataset_dict.save_to_disk(os.path.join(cfg.input_dataset_dir,cfg.input_dataset_name))
