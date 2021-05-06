@@ -15,9 +15,9 @@ class ObjDict(dict):
             raise AttributeError("No such attribute: " + name)
 
     @classmethod
-    def read_from_file_python3(cls,input_path):
+    def read_from_file_python3(cls,input_path,attr_name="config"):
         import importlib
         spec = importlib.util.spec_from_file_location("cfg",input_path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        return mod.config
+        return getattr(mod,attr_name)

@@ -23,43 +23,35 @@ def compute_metrics(p):
     }
 
 # __________________________________________________________________ ||
-config = ObjDict(
-
-    name = name,
-
-    #input_seq_df = 'data/train.csv',
-    #input_seq_df = 'data/train_hasDataset.csv',
-    input_seq_df = 'data/train_hasDataset_lite.csv',
-    columns_to_remove = [],
-    
-    pp = TokenClassifierPipeline(),
+begin_config = ObjDict(
+    input_dataset_dir = "data/huggingface/",
+    #input_dataset_name = 'optimise_tokenclassification_210506_01/'
+    #input_dataset_name = 'optimise_tokenclassification_210506_01_hasDataset/'
+    input_dataset_name = 'optimise_tokenclassification_210506_01_hasDataset_lite/',
     train_test_split = 0.1,
-
-)
-
-# __________________________________________________________________ ||
-config.input_dataset_dir = "data/huggingface/"
-#config.input_dataset_name = 'optimise_tokenclassification_210506_01/'
-#config.input_dataset_name = 'optimise_tokenclassification_210506_01_hasDataset/'
-config.input_dataset_name = 'optimise_tokenclassification_210506_01_hasDataset_lite/'
+    )
 
 # __________________________________________________________________ ||
+train_config = ObjDict(
+        train_batch_size = 16,
+        per_gpu_train_batch_size = 16,
+        num_train_epochs = 10,
+        learning_rate = 2e-5,
+        adam_epsilon = 1e-9,
+        warmup_steps = 1,
+        gradient_accumulation_steps = 1,
+        seed = 1,
+        device = 'cuda',
+        max_grad_norm = 9999.,
+        save_steps = 1,
+        output_dir = './',
+        max_steps = 999999999.,
+        
+        model = AutoModelForTokenClassification.from_pretrained(model_checkpoint, num_labels=len(label_list))
+        )
+
 config.model_checkpoint = model_checkpoint
 config.tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-config.model = AutoModelForTokenClassification.from_pretrained(model_checkpoint, num_labels=len(label_list))
-config.train_args = TrainingArguments(
-    output_dir=saved_model_path,
-    evaluation_strategy = "epoch",
-    learning_rate=2e-5,
-    per_device_train_batch_size=batch_size,
-    per_device_eval_batch_size=batch_size,
-    do_train=True,
-    do_eval=True,
-    num_train_epochs=10,
-    weight_decay=0.01,
-)
-config.compute_metrics = compute_metrics
-config.data_collator = DataCollatorForTokenClassification(config.tokenizer)
 
 config.saved_model_path = saved_model_path
 
