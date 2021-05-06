@@ -15,12 +15,19 @@ from utils.mkdir_p import mkdir_p
 def make_label(input_ids,dataset_ids,length):
     start_index = 1
     dataset_length = len(dataset_ids)-2
-    while not all([input_ids[start_index+i] == dataset_ids[i] for i in range(dataset_length)]):
-        start_index += 1
+    seq_length = len(input_ids)
+    found = False
+    while start_index + dataset_length < seq_length:
+        if not all([input_ids[start_index+i] == dataset_ids[i] for i in range(dataset_length)]):
+            start_index += 1
+        else:
+            found = True
+            break
         
     output = [0 for _ in range(length)]
-    for i in range(dataset_length):
-        output[start_index+i] = 1
+    if found:
+        for i in range(dataset_length):
+            output[start_index+i] = 1
     return output
 
 def convert_type(input_dict):
@@ -42,11 +49,9 @@ verbose = True
 
 # __________________________________________________________________ ||
 datasets = load_dataset("csv",data_files=[cfg.input_seq_df,])
-dataset = datasets['train'].remove_columns("Unnamed: 0.1")
-dataset = dataset.remove_columns("token")
-dataset = dataset.remove_columns("index")
-dataset = dataset.remove_columns("label")
-dataset = dataset.remove_columns("hasDataset")
+dataset = datasets['train']
+for name in cfg.columns_to_remove:
+    dataset.remove_columns(name)
 
 # __________________________________________________________________ ||
 tokenizer = AutoTokenizer.from_pretrained(cfg.model_checkpoint)
