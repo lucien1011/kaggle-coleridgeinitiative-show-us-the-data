@@ -21,3 +21,11 @@ class ObjDict(dict):
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return getattr(mod,attr_name)
+
+    @classmethod
+    def read_all_from_file_python3(cls,input_path,):
+        import importlib
+        spec = importlib.util.spec_from_file_location("cfg",input_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod

@@ -2,11 +2,13 @@ import os
 import pickle
 import torch
 import logging
+import random
 import numpy as np
+import pandas as pd
 
-from datasets import load_from_disk
 from transformers import AdamW, get_linear_schedule_with_warmup
-from torch.utils.data import TensorDataset
+from transformers import AutoTokenizer
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
 from tqdm import tqdm, trange
 
 from pipeline import Pipeline
@@ -21,16 +23,42 @@ def set_seed(args):
     if args.n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
+def make_label(input_ids,dataset_ids,length):
+    start_index = 1
+    dataset_length = len(dataset_ids)-2
+    seq_length = len(input_ids)
+    found = False
+    while start_index + dataset_length < seq_length:
+        if not all([input_ids[start_index+i] == dataset_ids[i] for i in range(dataset_length)]):
+            start_index += 1
+        else:
+            found = True
+            break
+        
+    output = [0 for _ in range(length)]
+    if found:
+        for i in range(dataset_length):
+            output[start_index+i] = 1
+    return output
+
 class TokenClassifierPipeline(Pipeline):
-    def __init__(self):
-        #self.cache = ObjDict()
-        pass
 
-    def read_np_dir(self,args):
-        self.cache.processed_dataset = load_from_disk(os.path.join(args.input_dataset_dir,args.input_dataset_name))
-        self.cache.dataset_dict = self.processed_dataset['train'].train_test_split(test_size=args.train_test_split)
-        self.cache.train_dataset = TensorDataset(self.
+    def preprocess(self,args):
+        tokenizer = AutoTokenizer.from_pretrained(args.model_checkpoint)
+        df = pd.read_csv(args.input_csv_path)
+        tokenized_inputs = tokenizer(df['sentence'].tolist(), padding=True, truncation=True, return_tensors="pt")
+        labels = []
+        for i,dataset in enumerate(df['dataset']):
+            tokenized_dataset = tokenizer(dataset)
+            
+            labels.append(make_label(tokenized_inputs.input_ids[i],tokenized_dataset['input_ids'][1:-1],len(tokenized_inputs.attention_mask[i]),))
+    
+        tokenized_inputs['labels'] = torch.tensor(labels)
 
+        inputs = ObjDict(
+                train_dataset = TensorDataset(tokenized_inputs['input_ids'],tokenized_inputs['attention_mask'],tokenized_inputs['labels']),
+                )
+        return inputs
 
     def train(self,inputs,model,args):
         if not args.train_batch_size:
@@ -49,7 +77,7 @@ class TokenClassifierPipeline(Pipeline):
             model = torch.nn.DataParallel(model)
 
         logger.info("***** Running training *****")
-        logger.info("  Num examples = %d", len(train_dataset))
+        logger.info("  Num examples = %d", len(inputs.train_dataset))
         logger.info("  Num Epochs = %d", args.num_train_epochs)
         logger.info("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
         logger.info("  Total train batch size (w. parallel, distributed & accumulation) = %d",
@@ -69,9 +97,9 @@ class TokenClassifierPipeline(Pipeline):
                 batch = tuple(t.to(args.device) for t in batch)
                 inputs = {"input_ids": batch[0],
                           "attention_mask": batch[1],
-                          "labels": batch[3]}
-                if args.model_type != "distilbert":
-                    inputs["token_type_ids"] = batch[2] if args.model_type in ["bert", "xlnet"] else None  # XLM and RoBERTa don"t use segment_ids
+                          "labels": batch[2]}
+                #if args.model_type != "distilbert":
+                #    inputs["token_type_ids"] = batch[2] if args.model_type in ["bert", "xlnet"] else None  # XLM and RoBERTa don"t use segment_ids
 
                 outputs = model(**inputs)
                 loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
@@ -102,7 +130,7 @@ class TokenClassifierPipeline(Pipeline):
                     #    tb_writer.add_scalar("loss", (tr_loss - logging_loss) / args.logging_steps, global_step)
                     #    logging_loss = tr_loss
 
-                    if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
+                    if args.save_steps > 0 and global_step % args.save_steps == 0:
                         # Save model checkpoint
                         output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(global_step))
                         if not os.path.exists(output_dir):
