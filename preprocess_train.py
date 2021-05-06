@@ -15,6 +15,7 @@ df = pd.read_csv('input/train.csv')
 
 out_dict = {
         "sentence": list(), 
+        "dataset": list(),
         "hasDataset": list(),
         "section": list(),
         }
@@ -30,6 +31,7 @@ for i,textId in enumerate(df['Id']):
             out_dict['sentence'].extend(token_sentences)
             out_dict['section'].extend([sec['section_title'] for sen in token_sentences])
             out_dict['hasDataset'].extend([int(df['dataset_label'][i] in sen) for sen in token_sentences])
+            out_dict['dataset'].extend([df['dataset_label'][i] for sen in token_sentences])
 
 out_df = pd.DataFrame(out_dict)
 out_df.to_csv(os.path.join(output_dir,'train.csv'))
