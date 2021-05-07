@@ -32,13 +32,15 @@ preprocess_cfg = ObjDict(
     #input_dataset_name = 'optimise_tokenclassification_210506_01/'
     #input_dataset_name = 'optimise_tokenclassification_210506_01_hasDataset/'
     #input_dataset_name = 'optimise_tokenclassification_210506_01_hasDataset_lite/',
-    #train_test_split = 0.1,
+    train_size = 0.8,
+    val_size = 0.1,
     )
 
 # __________________________________________________________________ ||
 train_cfg = ObjDict(
         train_batch_size = 16,
         per_gpu_train_batch_size = 16,
+        val_batch_size = 10,
         num_train_epochs = 1,
         learning_rate = 2e-5,
         adam_epsilon = 1e-9,
@@ -52,6 +54,7 @@ train_cfg = ObjDict(
         max_steps = 999999999.,
         weight_decay = 0.01,
         n_gpu = 0,
+        logging_steps = 2,
         )
 
 model = AutoModelForTokenClassification.from_pretrained(model_checkpoint, num_labels=len(label_list))

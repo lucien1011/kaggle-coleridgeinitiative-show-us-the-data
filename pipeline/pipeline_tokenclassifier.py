@@ -55,8 +55,16 @@ class TokenClassifierPipeline(Pipeline):
     
         tokenized_inputs['labels'] = torch.tensor(labels)
 
+        dataset = TensorDataset(tokenized_inputs['input_ids'],tokenized_inputs['attention_mask'],tokenized_inputs['labels'])
+        train_size = int(args.train_size * len(dataset))
+        val_size = int(args.val_size * len(dataset))
+        test_size = len(dataset) - train_size - val_size
+        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
+        
         inputs = ObjDict(
-                train_dataset = TensorDataset(tokenized_inputs['input_ids'],tokenized_inputs['attention_mask'],tokenized_inputs['labels']),
+                train_dataset = train_dataset,
+                val_dataset = val_dataset,
+                test_dataset = test_dataset,
                 )
         return inputs
 
@@ -64,7 +72,9 @@ class TokenClassifierPipeline(Pipeline):
         if not args.train_batch_size:
             args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
         train_sampler = RandomSampler(inputs.train_dataset)
+        val_sampler = RandomSampler(inputs.val_dataset)
         train_dataloader = DataLoader(inputs.train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
+        val_dataloader = DataLoader(inputs.val_dataset, sampler=val_sampler, batch_size=args.val_batch_size)
         t_total = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
         no_decay = ["bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [
@@ -86,56 +96,49 @@ class TokenClassifierPipeline(Pipeline):
         logger.info("  Total optimization steps = %d", t_total)
 
         global_step = 0
-        tr_loss, logging_loss = 0.0, 0.0
+        tr_loss = 0.0
         model.zero_grad()
         train_iterator = trange(int(args.num_train_epochs), desc="Epoch",)
-        set_seed(args)  # Added here for reproductibility (even between python 2 and 3)
+        set_seed(args)
         for _ in train_iterator:
             epoch_iterator = tqdm(train_dataloader, desc="Iteration",)
+            tr_loss_per_epoch = 0.0
             for step, batch in enumerate(epoch_iterator):
                 model.train()
                 batch = tuple(t.to(args.device) for t in batch)
-                inputs = {"input_ids": batch[0],
-                          "attention_mask": batch[1],
-                          "labels": batch[2]}
-                #if args.model_type != "distilbert":
-                #    inputs["token_type_ids"] = batch[2] if args.model_type in ["bert", "xlnet"] else None  # XLM and RoBERTa don"t use segment_ids
+                batch_train = {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
 
-                outputs = model(**inputs)
-                loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+                outputs = model(**batch_train)
+                loss = outputs[0]
 
                 if args.n_gpu > 1:
-                    loss = loss.mean()  # mean() to average on multi-gpu parallel training
+                    loss = loss.mean()
                 if args.gradient_accumulation_steps > 1:
                     loss = loss / args.gradient_accumulation_steps
 
                 loss.backward()
 
                 tr_loss += loss.item()
+                tr_loss_per_epoch += loss.item()
                 if (step + 1) % args.gradient_accumulation_steps == 0:
                     torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
 
-                    scheduler.step()  # Update learning rate schedule
                     optimizer.step()
+                    scheduler.step()
                     model.zero_grad()
                     global_step += 1
 
-                    #if args.local_rank in [-1, 0] and args.logging_steps > 0 and global_step % args.logging_steps == 0:
-                    #    # Log metrics
-                    #    if args.local_rank == -1 and args.evaluate_during_training:  # Only evaluate when single GPU otherwise metrics may not average well
-                    #        results, _ = evaluate(args, model, tokenizer, labels, pad_token_label_id, mode="dev")
-                    #        for key, value in results.items():
-                    #            tb_writer.add_scalar("eval_{}".format(key), value, global_step)
-                    #    tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
-                    #    tb_writer.add_scalar("loss", (tr_loss - logging_loss) / args.logging_steps, global_step)
-                    #    logging_loss = tr_loss
+                    if args.logging_steps > 0 and global_step % args.logging_steps == 0:
+                        batch_val = tuple(t.to(args.device) for t in iter(val_dataloader).next())
+                        batch_val = {"input_ids": batch_val[0],"attention_mask": batch_val[1],"labels": batch_val[2]}
+                        val_loss = model(**batch_val)[0]
+                        tqdm.write("| train loss {train_loss:4.2f} |  val loss {val_loss:4.2f} |".format(train_loss=loss.item(),val_loss=val_loss))
 
                     if args.save_steps > 0 and global_step % args.save_steps == 0:
-                        # Save model checkpoint
                         output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(global_step))
                         if not os.path.exists(output_dir):
                             os.makedirs(output_dir)
-                        model_to_save = model.module if hasattr(model, "module") else model  # Take care of distributed/parallel training
+                        model_to_save = model.module if hasattr(model, "module") else model
                         model_to_save.save_pretrained(output_dir)
                         torch.save(args, os.path.join(output_dir, "training_args.bin"))
                         logger.info("Saving model checkpoint to %s", output_dir)
@@ -143,10 +146,10 @@ class TokenClassifierPipeline(Pipeline):
                 if args.max_steps > 0 and global_step > args.max_steps:
                     epoch_iterator.close()
                     break
+
             if args.max_steps > 0 and global_step > args.max_steps:
                 train_iterator.close()
                 break
-
 
         return global_step, tr_loss / global_step
 
