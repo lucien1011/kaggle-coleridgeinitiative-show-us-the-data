@@ -9,12 +9,16 @@ import pandas as pd
 from transformers import AdamW, get_linear_schedule_with_warmup
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
+from torchmetrics.functional import accuracy,auroc,f1,precision,recall
+
 from tqdm import tqdm, trange
 
 from pipeline import Pipeline
 from utils.objdict import ObjDict
 
 logger = logging.getLogger(__name__)
+
+softmax = torch.nn.Softmax(dim=-1)
 
 def set_seed(args):
     random.seed(args.seed)
@@ -25,7 +29,7 @@ def set_seed(args):
 
 def make_label(input_ids,dataset_ids,length):
     start_index = 1
-    dataset_length = len(dataset_ids)-2
+    dataset_length = len(dataset_ids)
     seq_length = len(input_ids)
     found = False
     while start_index + dataset_length < seq_length:
@@ -41,10 +45,27 @@ def make_label(input_ids,dataset_ids,length):
             output[start_index+i] = 1
     return output
 
+def compute_metrics(preds,labels):
+    probs = softmax(preds.logits)[:,:,1].flatten()
+    labels_flatten = labels.flatten()
+    return {
+        "accuracy": accuracy(probs,labels_flatten),
+        "auroc": auroc(probs,labels_flatten),
+        "f1": f1(probs,labels_flatten),
+        "precision": precision(probs,labels_flatten),
+        "recall": recall(probs,labels_flatten),
+    }
+
 class TokenClassifierPipeline(Pipeline):
 
     def preprocess(self,args):
-        tokenizer = AutoTokenizer.from_pretrained(args.model_checkpoint)
+        if args.load_preprocess:
+            return self.load_preprocess_data(args)
+        else:
+            return self.create_preprocess_data(args)
+
+    def create_preprocess_data(self,args):
+        tokenizer = args.tokenizer
         df = pd.read_csv(args.input_csv_path)
         tokenized_inputs = tokenizer(df['sentence'].tolist(), padding=True, truncation=True, return_tensors="pt")
         labels = []
@@ -60,15 +81,41 @@ class TokenClassifierPipeline(Pipeline):
         val_size = int(args.val_size * len(dataset))
         test_size = len(dataset) - train_size - val_size
         train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
+
+        if args.save_preprocess_path:
+            torch.save(tokenized_inputs['input_ids'],os.path.join(args.save_preprocess_path,"input_ids.pt"))
+            torch.save(tokenized_inputs['attention_mask'],os.path.join(args.save_preprocess_path,"attention_mask.pt"))
+            torch.save(tokenized_inputs['labels'],os.path.join(args.save_preprocess_path,"labels.pt"))
         
         inputs = ObjDict(
+                dataset = dataset,
                 train_dataset = train_dataset,
                 val_dataset = val_dataset,
                 test_dataset = test_dataset,
                 )
         return inputs
 
+    def load_preprocess_data(self,args):
+        input_ids = torch.load(os.path.join(args.save_preprocess_path,"input_ids.pt"))
+        attention_mask = torch.load(os.path.join(args.save_preprocess_path,"attention_mask.pt"))
+        labels = torch.load(os.path.join(args.save_preprocess_path,"labels.pt"))
+
+        dataset = TensorDataset(input_ids,attention_mask,labels)
+        train_size = int(args.train_size * len(dataset))
+        val_size = int(args.val_size * len(dataset))
+        test_size = len(dataset) - train_size - val_size
+        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
+        inputs = ObjDict(
+                dataset = dataset,
+                train_dataset = train_dataset,
+                val_dataset = val_dataset,
+                test_dataset = test_dataset,
+                )
+        return inputs
+
+
     def train(self,inputs,model,args):
+        model.to(args.device)
         if not args.train_batch_size:
             args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
         train_sampler = RandomSampler(inputs.train_dataset)
@@ -131,8 +178,25 @@ class TokenClassifierPipeline(Pipeline):
                     if args.logging_steps > 0 and global_step % args.logging_steps == 0:
                         batch_val = tuple(t.to(args.device) for t in iter(val_dataloader).next())
                         batch_val = {"input_ids": batch_val[0],"attention_mask": batch_val[1],"labels": batch_val[2]}
-                        val_loss = model(**batch_val)[0]
-                        tqdm.write("| train loss {train_loss:4.2f} |  val loss {val_loss:4.2f} |".format(train_loss=loss.item(),val_loss=val_loss))
+                        
+                        with torch.no_grad():
+                            preds_val = model(**batch_val)
+                            val_loss = preds_val[0]
+                            preds_train = model(**batch_train)
+                            metrics_train = compute_metrics(preds_train,batch_train['labels'])
+                            metrics_val = compute_metrics(preds_val,batch_val['labels'])
+
+                        tqdm.write("*"*100)
+                        tqdm.write("global step {global_step}".format(global_step=global_step))
+                        tqdm.write("*"*100)
+                        tqdm.write(" | ".join([
+                            "train loss {train_loss:4.2f}".format(train_loss=loss.item()),
+                            ] + ["train {metric} {value:4.2f}".format(metric=name,value=value) for name,value in metrics_val.items()]
+                            ))
+                        tqdm.write(" | ".join([
+                            "val loss {val_loss:4.2f}".format(val_loss=val_loss),
+                            ] + ["val {metric} {value:4.2f}".format(metric=name,value=value) for name,value in metrics_val.items()]
+                            ))
 
                     if args.save_steps > 0 and global_step % args.save_steps == 0:
                         output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(global_step))
