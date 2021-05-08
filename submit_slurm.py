@@ -1,11 +1,11 @@
-def submit(cfg_path):
+def submit(cfg_path,cfg_name='slurm_cfg',):
     import os,pickle
     
     from utils.objdict import ObjDict
     from utils.mkdir_p import mkdir_p
     from SLURMWorker.SLURMWorker import SLURMWorker
 
-    cfg = ObjDict.read_from_file_python3(cfg_path)
+    cfg = ObjDict.read_from_file_python3(cfg_path,cfg_name)
     mkdir_p(cfg.slurm_job_dir)
     script_file_name = os.path.join(cfg.slurm_job_dir,cfg.slurm_cfg_name)
     

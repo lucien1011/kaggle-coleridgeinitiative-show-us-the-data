@@ -12,13 +12,10 @@ model_checkpoint = "distilbert-base-uncased"
 label_list = [0,1]
 
 # __________________________________________________________________ ||
-def compute_metrics(p):
-    predictions, labels = p
-    predictions = np.argmax(predictions, axis=2)
-    
-    return {
-        "accuracy": np.sum((predictions==1)*(labels==1)) / np.sum(labels==1),
-    }
+def accuracy(preds,labels):
+    preds = torch.argmax(preds.logits,axis=2)
+    match = (preds==1)*(batch['labels']==1)
+    return torch.sum(match) / torch.sum(labels==1)
 
 pipeline = TokenClassifierPipeline()
 
@@ -47,12 +44,13 @@ train_cfg = ObjDict(
         seed = 1,
         device = 'cuda',
         max_grad_norm = 9999.,
-        save_steps = 1,
+        save_steps = 100,
         output_dir = os.path.join('log/',name),
         max_steps = 999999999.,
         weight_decay = 0.01,
         n_gpu = 0,
         logging_steps = 100,
+        compute_metric = accuracy,
         )
 
 model = AutoModelForTokenClassification.from_pretrained(model_checkpoint, num_labels=len(label_list))
