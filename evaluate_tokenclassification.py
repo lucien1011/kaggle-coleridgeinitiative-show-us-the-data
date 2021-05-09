@@ -39,5 +39,3 @@ with torch.no_grad():
             print("step ",step)
             print("*"*50)
             print(" | ".join(["{name} {value:4.4f}".format(name=name,value=value) for name,value in d.items()]))
-            #print((probs > 0.5).nonzero(as_tuple=True))
-            #print(batch_test['labels'].nonzero(as_tuple=True))
