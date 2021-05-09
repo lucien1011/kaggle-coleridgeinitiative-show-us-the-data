@@ -10,10 +10,10 @@ from transformers import AdamW, get_linear_schedule_with_warmup
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
 from torchmetrics.functional import accuracy,auroc,f1,precision,recall
-
 from tqdm import tqdm, trange
 
 from pipeline import Pipeline
+from metrics.specificity import specificity
 from utils.objdict import ObjDict
 
 logger = logging.getLogger(__name__)
@@ -54,6 +54,7 @@ def compute_metrics(preds,labels):
         "f1": f1(probs,labels_flatten),
         "precision": precision(probs,labels_flatten),
         "recall": recall(probs,labels_flatten),
+        "specificity": specificity(probs,labels_flatten),
     }
 
 class TokenClassifierPipeline(Pipeline):
