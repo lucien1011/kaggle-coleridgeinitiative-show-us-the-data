@@ -72,9 +72,11 @@ class TokenClassifierPipeline(Pipeline):
         tokenized_inputs = tokenizer(df['sentence'].tolist(), padding=True, truncation=True, return_tensors="pt")
         labels = []
         for i,dataset in enumerate(df['dataset']):
-            tokenized_dataset = tokenizer(dataset)
-            
-            labels.append(make_label(tokenized_inputs.input_ids[i],tokenized_dataset['input_ids'][1:-1],len(tokenized_inputs.attention_mask[i]),))
+            if df['hasDataset'][i]:
+                tokenized_dataset = tokenizer(dataset)
+                labels.append(make_label(tokenized_inputs.input_ids[i],tokenized_dataset['input_ids'][1:-1],len(tokenized_inputs.attention_mask[i]),))
+            else:
+                labels.append([0 for _ in range(len(tokenized_inputs.attention_mask[i]))])
     
         tokenized_inputs['labels'] = torch.tensor(labels)
 
@@ -113,6 +115,9 @@ class TokenClassifierPipeline(Pipeline):
                 train_dataset = train_dataset,
                 val_dataset = val_dataset,
                 test_dataset = test_dataset,
+                input_ids = input_ids,
+                attention_mask = attention_mask,
+                labels = labels,
                 )
         return inputs
 
@@ -134,7 +139,9 @@ class TokenClassifierPipeline(Pipeline):
 
         dataset = TensorDataset(input_ids,attention_mask)
         inputs = ObjDict(
-                dataset = dataset,
+                test_dataset = dataset,
+                input_ids = input_ids,
+                attention_mask = attention_mask,
                 )
         return inputs
 
@@ -246,5 +253,5 @@ class TokenClassifierPipeline(Pipeline):
         #self.cfg.model.save_pretrained(self.cfg.saved_model_path)
         #torch.save(self.cfg.model,self.cfg.saved_model_path)
 
-    def custom_train(self):
+    def predict(self):
         pass
