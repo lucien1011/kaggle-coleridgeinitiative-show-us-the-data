@@ -17,14 +17,14 @@ device = 'cuda'
 batch_size = 512
 
 # __________________________________________________________________ ||
-inputs = cfg.pipeline.load_preprocess_data(cfg.preprocess_cfg)
+inputs = cfg.pipeline.load_preprocess_train_data(cfg.preprocess_cfg)
 model = AutoModelForTokenClassification.from_pretrained(pretrain_model,config=AutoConfig.from_pretrained(cfg.base_pretrained))
 
 # __________________________________________________________________ ||
 model = model.to(device)
 
 test_sampler = RandomSampler(inputs.test_dataset)
-test_dataloader = DataLoader(inputs.test_dataset, sampler=test_sampler, batch_size=256)
+test_dataloader = DataLoader(inputs.test_dataset, sampler=test_sampler, batch_size=batch_size)
 
 softmax = torch.nn.Softmax(dim=-1)
 with torch.no_grad():

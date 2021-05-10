@@ -14,6 +14,7 @@ from tqdm import tqdm, trange
 
 from pipeline import Pipeline
 from metrics.specificity import specificity
+from utils.mkdir_p import mkdir_p
 from utils.objdict import ObjDict
 
 logger = logging.getLogger(__name__)
@@ -59,15 +60,15 @@ def compute_metrics(preds,labels):
 
 class TokenClassifierPipeline(Pipeline):
 
-    def preprocess(self,args):
+    def preprocess_train_data(self,args):
         if args.load_preprocess:
-            return self.load_preprocess_data(args)
+            return self.load_preprocess_train_data(args)
         else:
-            return self.create_preprocess_data(args)
+            return self.create_preprocess_train_data(args)
 
-    def create_preprocess_data(self,args):
+    def create_preprocess_train_data(self,args):
         tokenizer = args.tokenizer
-        df = pd.read_csv(args.input_csv_path)
+        df = pd.read_csv(args.train_csv_path)
         tokenized_inputs = tokenizer(df['sentence'].tolist(), padding=True, truncation=True, return_tensors="pt")
         labels = []
         for i,dataset in enumerate(df['dataset']):
@@ -83,10 +84,11 @@ class TokenClassifierPipeline(Pipeline):
         test_size = len(dataset) - train_size - val_size
         train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
 
-        if args.save_preprocess_path:
-            torch.save(tokenized_inputs['input_ids'],os.path.join(args.save_preprocess_path,"input_ids.pt"))
-            torch.save(tokenized_inputs['attention_mask'],os.path.join(args.save_preprocess_path,"attention_mask.pt"))
-            torch.save(tokenized_inputs['labels'],os.path.join(args.save_preprocess_path,"labels.pt"))
+        if args.preprocess_train_dir:
+            mkdir_p(args.preprocess_train_dir)
+            torch.save(tokenized_inputs['input_ids'],os.path.join(args.preprocess_train_dir,"input_ids.pt"))
+            torch.save(tokenized_inputs['attention_mask'],os.path.join(args.preprocess_train_dir,"attention_mask.pt"))
+            torch.save(tokenized_inputs['labels'],os.path.join(args.preprocess_train_dir,"labels.pt"))
         
         inputs = ObjDict(
                 dataset = dataset,
@@ -96,10 +98,10 @@ class TokenClassifierPipeline(Pipeline):
                 )
         return inputs
 
-    def load_preprocess_data(self,args):
-        input_ids = torch.load(os.path.join(args.save_preprocess_path,"input_ids.pt"))
-        attention_mask = torch.load(os.path.join(args.save_preprocess_path,"attention_mask.pt"))
-        labels = torch.load(os.path.join(args.save_preprocess_path,"labels.pt"))
+    def load_preprocess_train_data(self,args):
+        input_ids = torch.load(os.path.join(args.preprocess_train_dir,"input_ids.pt"))
+        attention_mask = torch.load(os.path.join(args.preprocess_train_dir,"attention_mask.pt"))
+        labels = torch.load(os.path.join(args.preprocess_train_dir,"labels.pt"))
 
         dataset = TensorDataset(input_ids,attention_mask,labels)
         train_size = int(args.train_size * len(dataset))
@@ -114,6 +116,27 @@ class TokenClassifierPipeline(Pipeline):
                 )
         return inputs
 
+    def create_preprocess_test_data(self,args):
+        tokenizer = args.tokenizer
+        df = pd.read_csv(args.test_csv_path)
+        tokenized_inputs = tokenizer(df['sentence'].tolist(), padding=True, truncation=True, return_tensors="pt")
+
+        if args.preprocess_test_dir:
+            mkdir_p(args.preprocess_test_dir)
+            torch.save(tokenized_inputs['input_ids'],os.path.join(args.preprocess_test_dir,"input_ids.pt"))
+            torch.save(tokenized_inputs['attention_mask'],os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
+
+        return tokenized_inputs
+    
+    def load_preprocess_test_data(self,args):
+        input_ids = torch.load(os.path.join(args.preprocess_test_dir,"input_ids.pt"))
+        attention_mask = torch.load(os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
+
+        dataset = TensorDataset(input_ids,attention_mask)
+        inputs = ObjDict(
+                dataset = dataset,
+                )
+        return inputs
 
     def train(self,inputs,model,args):
         model.to(args.device)
