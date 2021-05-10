@@ -51,7 +51,7 @@ def compute_metrics(preds,labels):
     labels_flatten = labels.flatten()
     return {
         "accuracy": accuracy(probs,labels_flatten),
-        "auroc": auroc(probs,labels_flatten),
+        #"auroc": auroc(probs,labels_flatten),
         "f1": f1(probs,labels_flatten),
         "precision": precision(probs,labels_flatten),
         "recall": recall(probs,labels_flatten),
@@ -60,13 +60,77 @@ def compute_metrics(preds,labels):
 
 class TokenClassifierPipeline(Pipeline):
 
-    def preprocess_train_data(self,args):
+    def preprocess_sequence_train_data(self,args):
+        if args.load_preprocess:
+            return self.load_preprocess_sequence_train_data(args)
+        else:
+            return self.create_preprocess_sequence_train_data(args)
+
+    def load_preprocess_sequence_train_data(self,args):
+        input_ids = torch.load(os.path.join(args.preprocess_train_dir,"input_ids.pt"))
+        attention_mask = torch.load(os.path.join(args.preprocess_train_dir,"attention_mask.pt"))
+        labels = torch.load(os.path.join(args.preprocess_train_dir,"labels.pt"))
+
+        dataset = TensorDataset(input_ids,attention_mask,labels)
+        train_size = int(args.train_size * len(dataset))
+        val_size = int(args.val_size * len(dataset))
+        test_size = len(dataset) - train_size - val_size
+        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
+        inputs = ObjDict(
+                dataset = dataset,
+                train_dataset = train_dataset,
+                val_dataset = val_dataset,
+                test_dataset = test_dataset,
+                input_ids = input_ids,
+                attention_mask = attention_mask,
+                labels = labels,
+                )
+        return inputs
+
+    def create_preprocess_sequence_train_data(self,args):
+        tokenizer = args.tokenizer
+        df = pd.read_csv(args.train_csv_path)
+
+        print("Tokenize text")
+        tokenized_inputs = tokenizer(df['text'].tolist(),pad_to_max_length=True,max_length=512,truncation=True,return_overflowing_tokens=True,return_tensors='pt',)
+
+        print("Make labels")
+        labels = []
+        ntext = len(tokenized_inputs['overflow_to_sample_mapping'])
+        for i in range(ntext):
+            tokenized_dataset = tokenizer(df['dataset'][int(tokenized_inputs['overflow_to_sample_mapping'][i])])
+            labels.append(make_label(tokenized_inputs.input_ids[i],tokenized_dataset['input_ids'][1:-1],len(tokenized_inputs.attention_mask[i]),))
+        tokenized_inputs['labels'] = torch.tensor(labels)
+
+        print("Saving")
+        if args.preprocess_train_dir:
+            mkdir_p(args.preprocess_train_dir)
+            torch.save(tokenized_inputs['input_ids'],os.path.join(args.preprocess_train_dir,"input_ids.pt"))
+            torch.save(tokenized_inputs['attention_mask'],os.path.join(args.preprocess_train_dir,"attention_mask.pt"))
+            torch.save(tokenized_inputs['overflow_to_sample_mapping'],os.path.join(args.preprocess_train_dir,"overflow_to_sample_mapping.pt"))
+            torch.save(tokenized_inputs['labels'],os.path.join(args.preprocess_train_dir,"labels.pt"))
+        
+        dataset = TensorDataset(tokenized_inputs['input_ids'],tokenized_inputs['attention_mask'],tokenized_inputs['labels'])
+        train_size = int(args.train_size * len(dataset))
+        val_size = int(args.val_size * len(dataset))
+        test_size = len(dataset) - train_size - val_size
+        
+        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
+        inputs = ObjDict(
+                dataset = dataset,
+                train_dataset = train_dataset,
+                val_dataset = val_dataset,
+                test_dataset = test_dataset,
+                )
+        return inputs
+
+    def preprocess_sentence_train_data(self,args):
         if args.load_preprocess:
             return self.load_preprocess_train_data(args)
         else:
             return self.create_preprocess_train_data(args)
 
-    def create_preprocess_train_data(self,args):
+    def create_preprocess_sentence_train_data(self,args):
         tokenizer = args.tokenizer
         df = pd.read_csv(args.train_csv_path)
         tokenized_inputs = tokenizer(df['sentence'].tolist(), padding=True, truncation=True, return_tensors="pt")
@@ -100,7 +164,7 @@ class TokenClassifierPipeline(Pipeline):
                 )
         return inputs
 
-    def load_preprocess_train_data(self,args):
+    def load_preprocess_sentence_train_data(self,args):
         input_ids = torch.load(os.path.join(args.preprocess_train_dir,"input_ids.pt"))
         attention_mask = torch.load(os.path.join(args.preprocess_train_dir,"attention_mask.pt"))
         labels = torch.load(os.path.join(args.preprocess_train_dir,"labels.pt"))
@@ -121,7 +185,7 @@ class TokenClassifierPipeline(Pipeline):
                 )
         return inputs
 
-    def create_preprocess_test_data(self,args):
+    def create_preprocess_sentence_test_data(self,args):
         tokenizer = args.tokenizer
         df = pd.read_csv(args.test_csv_path)
         tokenized_inputs = tokenizer(df['sentence'].tolist(), padding=True, truncation=True, return_tensors="pt")
@@ -133,7 +197,7 @@ class TokenClassifierPipeline(Pipeline):
 
         return tokenized_inputs
     
-    def load_preprocess_test_data(self,args):
+    def load_preprocess_sentence_test_data(self,args):
         input_ids = torch.load(os.path.join(args.preprocess_test_dir,"input_ids.pt"))
         attention_mask = torch.load(os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
 
@@ -221,12 +285,12 @@ class TokenClassifierPipeline(Pipeline):
                         tqdm.write("global step {global_step}".format(global_step=global_step))
                         tqdm.write("*"*100)
                         tqdm.write(" | ".join([
-                            "train loss {train_loss:4.2f}".format(train_loss=loss.item()),
-                            ] + ["train {metric} {value:4.2f}".format(metric=name,value=value) for name,value in metrics_val.items()]
+                            "train loss {train_loss:4.4f}".format(train_loss=loss.item()),
+                            ] + ["train {metric} {value:4.4f}".format(metric=name,value=value) for name,value in metrics_val.items()]
                             ))
                         tqdm.write(" | ".join([
-                            "val loss {val_loss:4.2f}".format(val_loss=val_loss),
-                            ] + ["val {metric} {value:4.2f}".format(metric=name,value=value) for name,value in metrics_val.items()]
+                            "val loss {val_loss:4.4f}".format(val_loss=val_loss),
+                            ] + ["val {metric} {value:4.4f}".format(metric=name,value=value) for name,value in metrics_val.items()]
                             ))
 
                     if args.save_steps > 0 and global_step % args.save_steps == 0:
