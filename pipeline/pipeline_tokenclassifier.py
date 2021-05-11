@@ -124,71 +124,10 @@ class TokenClassifierPipeline(Pipeline):
                 )
         return inputs
 
-    def preprocess_sentence_train_data(self,args):
-        if args.load_preprocess:
-            return self.load_preprocess_train_data(args)
-        else:
-            return self.create_preprocess_train_data(args)
-
-    def create_preprocess_sentence_train_data(self,args):
-        tokenizer = args.tokenizer
-        df = pd.read_csv(args.train_csv_path)
-        tokenized_inputs = tokenizer(df['sentence'].tolist(), padding=True, truncation=True, return_tensors="pt")
-        labels = []
-        for i,dataset in enumerate(df['dataset']):
-            if df['hasDataset'][i]:
-                tokenized_dataset = tokenizer(dataset)
-                labels.append(make_label(tokenized_inputs.input_ids[i],tokenized_dataset['input_ids'][1:-1],len(tokenized_inputs.attention_mask[i]),))
-            else:
-                labels.append([0 for _ in range(len(tokenized_inputs.attention_mask[i]))])
-    
-        tokenized_inputs['labels'] = torch.tensor(labels)
-
-        dataset = TensorDataset(tokenized_inputs['input_ids'],tokenized_inputs['attention_mask'],tokenized_inputs['labels'])
-        train_size = int(args.train_size * len(dataset))
-        val_size = int(args.val_size * len(dataset))
-        test_size = len(dataset) - train_size - val_size
-        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
-
-        if args.preprocess_train_dir:
-            mkdir_p(args.preprocess_train_dir)
-            torch.save(tokenized_inputs['input_ids'],os.path.join(args.preprocess_train_dir,"input_ids.pt"))
-            torch.save(tokenized_inputs['attention_mask'],os.path.join(args.preprocess_train_dir,"attention_mask.pt"))
-            torch.save(tokenized_inputs['labels'],os.path.join(args.preprocess_train_dir,"labels.pt"))
-        
-        inputs = ObjDict(
-                dataset = dataset,
-                train_dataset = train_dataset,
-                val_dataset = val_dataset,
-                test_dataset = test_dataset,
-                )
-        return inputs
-
-    def load_preprocess_sentence_train_data(self,args):
-        input_ids = torch.load(os.path.join(args.preprocess_train_dir,"input_ids.pt"))
-        attention_mask = torch.load(os.path.join(args.preprocess_train_dir,"attention_mask.pt"))
-        labels = torch.load(os.path.join(args.preprocess_train_dir,"labels.pt"))
-
-        dataset = TensorDataset(input_ids,attention_mask,labels)
-        train_size = int(args.train_size * len(dataset))
-        val_size = int(args.val_size * len(dataset))
-        test_size = len(dataset) - train_size - val_size
-        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
-        inputs = ObjDict(
-                dataset = dataset,
-                train_dataset = train_dataset,
-                val_dataset = val_dataset,
-                test_dataset = test_dataset,
-                input_ids = input_ids,
-                attention_mask = attention_mask,
-                labels = labels,
-                )
-        return inputs
-
-    def create_preprocess_sentence_test_data(self,args):
+    def create_preprocess_sequence_test_data(self,args):
         tokenizer = args.tokenizer
         df = pd.read_csv(args.test_csv_path)
-        tokenized_inputs = tokenizer(df['sentence'].tolist(), padding=True, truncation=True, return_tensors="pt")
+        tokenized_inputs = tokenizer(df['text'].tolist(), padding=True, truncation=True, return_tensors="pt")
 
         if args.preprocess_test_dir:
             mkdir_p(args.preprocess_test_dir)
@@ -197,7 +136,7 @@ class TokenClassifierPipeline(Pipeline):
 
         return tokenized_inputs
     
-    def load_preprocess_sentence_test_data(self,args):
+    def load_preprocess_sequence_test_data(self,args):
         input_ids = torch.load(os.path.join(args.preprocess_test_dir,"input_ids.pt"))
         attention_mask = torch.load(os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
 
@@ -312,11 +251,3 @@ class TokenClassifierPipeline(Pipeline):
                 break
 
         return global_step, tr_loss / global_step
-
-    def save(self):
-        pass
-        #self.cfg.model.save_pretrained(self.cfg.saved_model_path)
-        #torch.save(self.cfg.model,self.cfg.saved_model_path)
-
-    def predict(self):
-        pass
