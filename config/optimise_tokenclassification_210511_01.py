@@ -30,7 +30,7 @@ preprocess_cfg = ObjDict(
     tokenizer = tokenizer,
     preprocess_train_dir = preprocess_train_dir,
     load_preprocess = True,
-    test_csv_path = 'data/test.csv',
+    test_csv_path = 'data/test_sequence.csv',
     preprocess_test_dir = preprocess_test_dir,
     )
 
@@ -53,6 +53,14 @@ train_cfg = ObjDict(
         weight_decay = 0.01,
         n_gpu = 0,
         logging_steps = 100,
+        )
+
+# __________________________________________________________________ ||
+evaluate_cfg = ObjDict(
+        pretrain_model = os.path.join("log",name,"checkpoint-30000"),
+        device = 'cuda',
+        batch_size = 256,
+        output_text_path = 'tmp/predict_test_tokenclassification.txt',
         )
 
 # __________________________________________________________________ ||
