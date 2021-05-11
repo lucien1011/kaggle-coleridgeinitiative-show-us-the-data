@@ -10,8 +10,6 @@ from utils.objdict import ObjDict
 # __________________________________________________________________ ||
 name = "optimise_tokenclassification_distilbert_base_uncased_210511_01"
 base_pretrained = "distilbert-base-uncased"
-pretrain_model = "log/optimise_tokenclassification_210507_01_hasDataset/checkpoint-16400/"
-pretrain_tokenizer = "log/optimise_tokenclassification_210507_01_hasDataset/tokenizer/" 
 preprocess_train_dir = "data/optimise_tokenclassification_210510_01/train/" 
 preprocess_test_dir = "data/optimise_tokenclassification_210510_01/test/" 
 label_list = [0,1]

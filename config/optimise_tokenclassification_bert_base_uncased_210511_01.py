@@ -8,8 +8,8 @@ from pipeline.pipeline_tokenclassifier import TokenClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-name = "optimise_tokenclassification_albert_base_v1_210511_01"
-base_pretrained = "albert-base-v1"
+name = "optimise_tokenclassification_bert_base_uncased_210511_01"
+base_pretrained = "bert-base-uncased"
 preprocess_train_dir = "data/optimise_tokenclassification_210510_01/train/" 
 preprocess_test_dir = "data/optimise_tokenclassification_210510_01/test/" 
 label_list = [0,1]
