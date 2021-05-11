@@ -13,6 +13,7 @@ cfg = ObjDict.read_all_from_file_python3(sys.argv[1])
 pp = TokenClassifierPipeline()
 
 _ = pp.create_preprocess_sequence_train_data(cfg.preprocess_cfg)
+_ = pp.create_preprocess_sequence_test_data(cfg.preprocess_cfg)
 
 #_ = pp.create_preprocess_sentence_train_data(cfg.preprocess_cfg)
 #_ = pp.create_preprocess_sentence_test_data(cfg.preprocess_cfg)
