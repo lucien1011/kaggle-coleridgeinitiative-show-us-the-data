@@ -97,7 +97,7 @@ class TokenClassifierPipeline(Pipeline):
         print("Make labels")
         labels = []
         ntext = len(tokenized_inputs['overflow_to_sample_mapping'])
-        for i in range(ntext):
+        for i in tqdm(range(ntext)):
             tokenized_dataset = tokenizer(df['dataset'][int(tokenized_inputs['overflow_to_sample_mapping'][i])])
             labels.append(make_label(tokenized_inputs.input_ids[i],tokenized_dataset['input_ids'][1:-1],len(tokenized_inputs.attention_mask[i]),))
         tokenized_inputs['labels'] = torch.tensor(labels)
@@ -128,15 +128,18 @@ class TokenClassifierPipeline(Pipeline):
         tokenizer = args.tokenizer
         df = pd.read_csv(args.test_csv_path)
         tokenized_inputs = tokenizer(df['text'].tolist(), padding=True, truncation=True, return_tensors="pt")
+        tokenized_inputs['id'] = df['id'].tolist()
 
         if args.preprocess_test_dir:
             mkdir_p(args.preprocess_test_dir)
+            torch.save(tokenized_inputs['id'],os.path.join(args.preprocess_test_dir,"id.pt"))
             torch.save(tokenized_inputs['input_ids'],os.path.join(args.preprocess_test_dir,"input_ids.pt"))
             torch.save(tokenized_inputs['attention_mask'],os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
 
         return tokenized_inputs
     
     def load_preprocess_sequence_test_data(self,args):
+        ids = torch.load(os.path.join(args.preprocess_test_dir,"id.pt"))
         input_ids = torch.load(os.path.join(args.preprocess_test_dir,"input_ids.pt"))
         attention_mask = torch.load(os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
 
@@ -145,6 +148,7 @@ class TokenClassifierPipeline(Pipeline):
                 test_dataset = dataset,
                 input_ids = input_ids,
                 attention_mask = attention_mask,
+                ids = ids,
                 )
         return inputs
 

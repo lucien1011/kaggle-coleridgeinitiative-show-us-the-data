@@ -16,8 +16,10 @@ cfg = ObjDict.read_all_from_file_python3(sys.argv[1])
 batch_size = 1
 
 # __________________________________________________________________ ||
-#inputs = cfg.pipeline.load_preprocess_sequence_train_data(cfg.preprocess_cfg)
-inputs = cfg.pipeline.load_preprocess_sequence_test_data(cfg.preprocess_cfg)
+if cfg.evaluate_cfg.test:
+    inputs = cfg.pipeline.load_preprocess_sequence_test_data(cfg.preprocess_cfg)
+else:
+    inputs = cfg.pipeline.load_preprocess_sequence_train_data(cfg.preprocess_cfg)
 model = AutoModelForTokenClassification.from_pretrained(cfg.evaluate_cfg.pretrain_model,config=AutoConfig.from_pretrained(cfg.base_pretrained))
 
 # __________________________________________________________________ ||
