@@ -12,25 +12,21 @@ from utils.mkdir_p import mkdir_p
 # __________________________________________________________________ ||
 cfg = ObjDict.read_all_from_file_python3(sys.argv[1])
 
-pretrain_model = "log/optimise_tokenclassification_210508_01_hasDataset/checkpoint-8200/"
-device = 'cuda'
-batch_size = 512
+# __________________________________________________________________ ||
+inputs = cfg.pipeline.load_preprocess_sequence_train_data(cfg.preprocess_cfg)
+model = AutoModelForTokenClassification.from_pretrained(cfg.evaluate_cfg.pretrain_model,config=AutoConfig.from_pretrained(cfg.base_pretrained))
 
 # __________________________________________________________________ ||
-inputs = cfg.pipeline.load_preprocess_train_data(cfg.preprocess_cfg)
-model = AutoModelForTokenClassification.from_pretrained(pretrain_model,config=AutoConfig.from_pretrained(cfg.base_pretrained))
-
-# __________________________________________________________________ ||
-model = model.to(device)
+model = model.to(cfg.evaluate_cfg.device)
 
 test_sampler = RandomSampler(inputs.test_dataset)
-test_dataloader = DataLoader(inputs.test_dataset, sampler=test_sampler, batch_size=batch_size)
+test_dataloader = DataLoader(inputs.test_dataset, sampler=test_sampler, batch_size=cfg.evaluate_cfg.batch_size)
 
 softmax = torch.nn.Softmax(dim=-1)
 with torch.no_grad():
     for step, batch in enumerate(test_dataloader):
-        if step % 10 == 0:
-            batch = tuple(t.to(device) for t in batch)
+        if step % 1000 == 0:
+            batch = tuple(t.to(cfg.evaluate_cfg.device) for t in batch)
             batch_test = {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
             with torch.no_grad():
                 preds = model(**batch_test)

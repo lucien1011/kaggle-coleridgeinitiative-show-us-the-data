@@ -12,25 +12,22 @@ from utils.mkdir_p import mkdir_p
 # __________________________________________________________________ ||
 cfg = ObjDict.read_all_from_file_python3(sys.argv[1])
 
-pretrain_model = "log/optimise_tokenclassification_210508_01_hasDataset/checkpoint-8200/"
-device = 'cuda'
+# __________________________________________________________________ ||
 batch_size = 1
-#output_text_path = 'tmp/predict_test_tokenclassification.txt'
-output_text_path = 'tmp/predict_train_tokenclassification.txt'
 
 # __________________________________________________________________ ||
-#inputs = cfg.pipeline.load_preprocess_test_data(cfg.preprocess_cfg)
-inputs = cfg.pipeline.load_preprocess_train_data(cfg.preprocess_cfg)
-model = AutoModelForTokenClassification.from_pretrained(pretrain_model,config=AutoConfig.from_pretrained(cfg.base_pretrained))
+#inputs = cfg.pipeline.load_preprocess_sequence_train_data(cfg.preprocess_cfg)
+inputs = cfg.pipeline.load_preprocess_sequence_test_data(cfg.preprocess_cfg)
+model = AutoModelForTokenClassification.from_pretrained(cfg.evaluate_cfg.pretrain_model,config=AutoConfig.from_pretrained(cfg.base_pretrained))
 
 # __________________________________________________________________ ||
-model = model.to(device)
+model = model.to(cfg.evaluate_cfg.device)
 softmax = torch.nn.Softmax(dim=-1)
-t = open(output_text_path,"w")
+t = open(cfg.evaluate_cfg.output_text_path,"w")
 for step,(input_id,mask) in enumerate(zip(inputs.input_ids,inputs.attention_mask)):
-    if step % 50 != 0: continue
-    input_id = input_id.to(device)
-    mask = mask.to(device)
+    if step % 1 != 0: continue
+    input_id = input_id.to(cfg.evaluate_cfg.device)
+    mask = mask.to(cfg.evaluate_cfg.device)
     with torch.no_grad():
         preds = model(input_ids=torch.unsqueeze(input_id,0),attention_mask=torch.unsqueeze(mask,0))
         probs = softmax(preds.logits)
