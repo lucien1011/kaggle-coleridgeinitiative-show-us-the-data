@@ -8,7 +8,7 @@ from pipeline.pipeline_tokenclassifier import TokenClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-name = "optimise_tokenclassification_210511_01"
+name = "optimise_tokenclassification_distilbert_base_uncased_210511_01"
 base_pretrained = "distilbert-base-uncased"
 pretrain_model = "log/optimise_tokenclassification_210507_01_hasDataset/checkpoint-16400/"
 pretrain_tokenizer = "log/optimise_tokenclassification_210507_01_hasDataset/tokenizer/" 
@@ -39,7 +39,7 @@ train_cfg = ObjDict(
         train_batch_size = 16,
         per_gpu_train_batch_size = 1,
         val_batch_size = 128,
-        num_train_epochs = 1,
+        num_train_epochs = 3,
         learning_rate = 2e-5,
         adam_epsilon = 1e-9,
         warmup_steps = 0.1,
