@@ -224,6 +224,7 @@ class TokenClassifierPipeline(Pipeline):
                     {"params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], "weight_decay": 0.0}
                                 ]
         optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
+        num_warmup_steps = args.warmup_steps if args.warmup_steps >= 1 else int(t_total*args.warmup_steps)
         scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total)
         if args.n_gpu > 1:
             model = torch.nn.DataParallel(model)
