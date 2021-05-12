@@ -25,7 +25,7 @@ test_dataloader = DataLoader(inputs.test_dataset, sampler=test_sampler, batch_si
 softmax = torch.nn.Softmax(dim=-1)
 with torch.no_grad():
     for step, batch in enumerate(test_dataloader):
-        if step % 1000 == 0:
+        if step % cfg.evaluate_cfg.print_per_step == 0:
             batch = tuple(t.to(cfg.evaluate_cfg.device) for t in batch)
             batch_test = {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
             with torch.no_grad():
