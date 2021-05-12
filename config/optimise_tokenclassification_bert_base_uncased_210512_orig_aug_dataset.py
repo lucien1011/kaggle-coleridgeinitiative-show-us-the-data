@@ -8,10 +8,10 @@ from pipeline.pipeline_tokenclassifier import TokenClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-name = "optimise_tokenclassification_bert_base_uncased_210511_01"
+name = "optimise_tokenclassification_bert_base_uncased_210512_orig_aug_dataset"
 base_pretrained = "bert-base-uncased"
-preprocess_train_dir = "data/optimise_tokenclassification_210510_01/train/" 
-preprocess_test_dir = "data/optimise_tokenclassification_210510_01/test/" 
+preprocess_train_dir = "data/optimise_tokenclassification_distilbert_base_uncased_210511_orig_aug_dataset/train/" 
+preprocess_test_dir = "data/optimise_tokenclassification_distilbert_base_uncased_210511_orig_aug_dataset/test/" 
 label_list = [0,1]
 
 # __________________________________________________________________ ||
@@ -22,7 +22,7 @@ tokenizer = AutoTokenizer.from_pretrained(base_pretrained)
 
 # __________________________________________________________________ ||
 preprocess_cfg = ObjDict(
-    train_csv_path = "data/train_sequence.csv",
+    train_csv_path = "data/train_sequence_orig_aug_dataset.csv",
     train_size = 0.8,
     val_size = 0.1,
     tokenizer = tokenizer,
@@ -45,7 +45,7 @@ train_cfg = ObjDict(
         seed = 1,
         device = 'cuda',
         max_grad_norm = 9999.,
-        save_steps = 1000,
+        save_steps = 5000,
         output_dir = os.path.join('log/',name),
         max_steps = 999999999.,
         weight_decay = 0.01,
@@ -63,12 +63,12 @@ evaluate_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 extract_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-50000"),
-        device = 'cuda',
-        test = False,
+        pretrain_model = os.path.join("log",name,"checkpoint-20000"),
+        device = 'cpu',
+        test = True,
         write_predicted_only = True,
-        write_per_step = 500,
-        extract_text_path = os.path.join('tmp',name+'_extract_train.txt'),
+        write_per_step = 1,
+        extract_text_path = os.path.join('tmp',name+'_extract_test_20000.txt'),
         )
 
 # __________________________________________________________________ ||

@@ -2,27 +2,27 @@ import os
 import numpy as np
 import torch
 
-from transformers import AutoConfig,AutoTokenizer,AutoModelForTokenClassification, TrainingArguments, Trainer, DataCollatorForTokenClassification
+from transformers import DistilBertForTokenClassification,DistilBertTokenizer
 
-from pipeline.pipeline_tokenclassifier import TokenClassifierPipeline
+from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-name = "optimise_tokenclassification_bert_base_uncased_210511_01"
-base_pretrained = "bert-base-uncased"
-preprocess_train_dir = "data/optimise_tokenclassification_210510_01/train/" 
-preprocess_test_dir = "data/optimise_tokenclassification_210510_01/test/" 
-label_list = [0,1]
+name = "optimise_questionanswer_distilbert_base_uncased_210512"
+base_pretrained = "distilbert-base-uncased"
+preprocess_train_dir = "data/optimise_questionanswer_distilbert_base_uncased_210512/train/" 
+preprocess_test_dir = "data/optimise_questionanswer_distilbert_base_uncased_210512/test/" 
+label_list = [0,1,2,3]
 
 # __________________________________________________________________ ||
-pipeline = TokenClassifierPipeline()
+pipeline = TokenMultiClassifierPipeline()
 
-model = AutoModelForTokenClassification.from_pretrained(base_pretrained)
-tokenizer = AutoTokenizer.from_pretrained(base_pretrained)
+model = DistilBertForTokenClassification.from_pretrained('model/'+base_pretrained)
+tokenizer = DistilBertTokenizer.from_pretrained('tokenizer/'+base_pretrained)
 
 # __________________________________________________________________ ||
 preprocess_cfg = ObjDict(
-    train_csv_path = "data/train_sequence.csv",
+    train_csv_path = "data/train_sequence_has_dataset.csv",
     train_size = 0.8,
     val_size = 0.1,
     tokenizer = tokenizer,
@@ -34,10 +34,10 @@ preprocess_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 train_cfg = ObjDict(
-        train_batch_size = 8,
+        train_batch_size = 16,
         per_gpu_train_batch_size = 1,
         val_batch_size = 128,
-        num_train_epochs = 1,
+        num_train_epochs = 3,
         learning_rate = 2e-5,
         adam_epsilon = 1e-9,
         warmup_steps = 0.1,
@@ -55,20 +55,12 @@ train_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 evaluate_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-50000"),
+        pretrain_model = os.path.join("log",name,"checkpoint-40000"),
         device = 'cuda',
         batch_size = 256,
-        print_per_step = 50,
-        )
-
-# __________________________________________________________________ ||
-extract_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-50000"),
-        device = 'cuda',
-        test = False,
-        write_predicted_only = True,
-        write_per_step = 500,
-        extract_text_path = os.path.join('tmp',name+'_extract_train.txt'),
+        test = True,
+        output_text_path = os.path.join('tmp',name+'_test.txt'),
+        extract_text_path = os.path.join('tmp',name+'_extract.txt'),
         )
 
 # __________________________________________________________________ ||

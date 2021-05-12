@@ -55,7 +55,7 @@ train_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 evaluate_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-19000"),
+        pretrain_model = os.path.join("log",name,"checkpoint-40000"),
         device = 'cuda',
         batch_size = 256,
         test = True,
