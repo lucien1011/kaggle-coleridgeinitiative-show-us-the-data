@@ -25,7 +25,7 @@ model = AutoModelForTokenClassification.from_pretrained(cfg.evaluate_cfg.pretrai
 # __________________________________________________________________ ||
 model = model.to(cfg.evaluate_cfg.device)
 softmax = torch.nn.Softmax(dim=-1)
-t = open(cfg.evaluate_cfg.output_text_path,"w")
+t = open(cfg.evaluate_cfg.predict_text_path,"w")
 for step,(input_id,mask) in enumerate(zip(inputs.input_ids,inputs.attention_mask)):
     if step % 1 != 0: continue
     input_id = input_id.to(cfg.evaluate_cfg.device)
