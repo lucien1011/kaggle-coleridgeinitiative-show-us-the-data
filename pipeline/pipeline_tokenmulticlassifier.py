@@ -59,11 +59,11 @@ def compute_metrics(preds,labels,num_classes):
     probs = softmax(preds.logits).flatten(0,1)
     labels_flatten = labels.flatten(0,1)
     return {
-        "accuracy": accuracy(probs,labels_flatten,num_classes=num_classes),
+        "accuracy": accuracy(probs,labels_flatten,num_classes=num_classes,average='macro',),
         #"auroc": auroc(probs,labels_flatten),
-        "f1": f1(probs,labels_flatten,num_classes=num_classes),
-        "precision": precision(probs,labels_flatten,num_classes=num_classes),
-        "recall": recall(probs,labels_flatten,num_classes=num_classes),
+        "f1": f1(probs,labels_flatten,num_classes=num_classes,average='macro',),
+        "precision": precision(probs,labels_flatten,num_classes=num_classes,average='macro',),
+        "recall": recall(probs,labels_flatten,num_classes=num_classes,average='macro',),
         #"specificity": specificity(probs,labels,num_classes=num_classes),
     }
 
@@ -143,7 +143,7 @@ class TokenMultiClassifierPipeline(Pipeline):
     def create_preprocess_test_data(self,args):
         tokenizer = args.tokenizer
         df = pd.read_csv(args.test_csv_path)
-        tokenized_inputs = tokenizer(df['text'].tolist(), padding=True, truncation=True, return_tensors="pt")
+        tokenized_inputs = tokenizer(df['text'].tolist(),padding='max_length',max_length=512,truncation=True,return_overflowing_tokens=True,return_tensors="pt")
         tokenized_inputs['id'] = df['id'].tolist()
 
         if args.preprocess_test_dir:
@@ -167,107 +167,3 @@ class TokenMultiClassifierPipeline(Pipeline):
                 #ids = ids,
                 )
         return inputs
-
-    def train(self,inputs,model,args):
-        model.to(args.device)
-        if not args.train_batch_size:
-            args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
-        train_sampler = RandomSampler(inputs.train_dataset)
-        val_sampler = RandomSampler(inputs.val_dataset)
-        train_dataloader = DataLoader(inputs.train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
-        val_dataloader = DataLoader(inputs.val_dataset, sampler=val_sampler, batch_size=args.val_batch_size)
-        t_total = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
-        no_decay = ["bias", "LayerNorm.weight"]
-        optimizer_grouped_parameters = [
-                    {"params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],"weight_decay": args.weight_decay},
-                    {"params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], "weight_decay": 0.0}
-                                ]
-        optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
-        num_warmup_steps = args.warmup_steps if args.warmup_steps >= 1 else int(t_total*args.warmup_steps)
-        scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total)
-        if args.n_gpu > 1:
-            model = torch.nn.DataParallel(model)
-
-        logger.info("***** Running training *****")
-        logger.info("  Num examples = %d", len(inputs.train_dataset))
-        logger.info("  Num Epochs = %d", args.num_train_epochs)
-        logger.info("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
-        logger.info("  Total train batch size (w. parallel, distributed & accumulation) = %d",
-                    args.train_batch_size * args.gradient_accumulation_steps)
-        logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
-        logger.info("  Total optimization steps = %d", t_total)
-
-        global_step = 0
-        tr_loss = 0.0
-        model.zero_grad()
-        train_iterator = trange(int(args.num_train_epochs), desc="Epoch",)
-        set_seed(args)
-        for _ in train_iterator:
-            epoch_iterator = tqdm(train_dataloader, desc="Iteration",)
-            tr_loss_per_epoch = 0.0
-            for step, batch in enumerate(epoch_iterator):
-                model.train()
-                batch = tuple(t.to(args.device) for t in batch)
-                batch_train = {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
-
-                outputs = model(**batch_train)
-                loss = outputs[0]
-
-                if args.n_gpu > 1:
-                    loss = loss.mean()
-                if args.gradient_accumulation_steps > 1:
-                    loss = loss / args.gradient_accumulation_steps
-
-                loss.backward()
-
-                tr_loss += loss.item()
-                tr_loss_per_epoch += loss.item()
-                if (step + 1) % args.gradient_accumulation_steps == 0:
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
-
-                    optimizer.step()
-                    scheduler.step()
-                    model.zero_grad()
-                    global_step += 1
-
-                    if args.logging_steps > 0 and global_step % args.logging_steps == 0:
-                        batch_val = tuple(t.to(args.device) for t in iter(val_dataloader).next())
-                        batch_val = {"input_ids": batch_val[0],"attention_mask": batch_val[1],"labels": batch_val[2]}
-                        
-                        with torch.no_grad():
-                            preds_val = model(**batch_val)
-                            val_loss = preds_val[0]
-                            preds_train = model(**batch_train)
-                            metrics_train = compute_metrics(preds_train,batch_train['labels'],model.num_labels)
-                            metrics_val = compute_metrics(preds_val,batch_val['labels'],model.num_labels)
-
-                        tqdm.write("*"*100)
-                        tqdm.write("global step {global_step}".format(global_step=global_step))
-                        tqdm.write("*"*100)
-                        tqdm.write(" | ".join([
-                            "train loss {train_loss:4.4f}".format(train_loss=loss.item()),
-                            ] + ["train {metric} {value:4.4f}".format(metric=name,value=value) for name,value in metrics_val.items()]
-                            ))
-                        tqdm.write(" | ".join([
-                            "val loss {val_loss:4.4f}".format(val_loss=val_loss),
-                            ] + ["val {metric} {value:4.4f}".format(metric=name,value=value) for name,value in metrics_val.items()]
-                            ))
-
-                    if args.save_steps > 0 and global_step % args.save_steps == 0:
-                        output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(global_step))
-                        if not os.path.exists(output_dir):
-                            os.makedirs(output_dir)
-                        model_to_save = model.module if hasattr(model, "module") else model
-                        model_to_save.save_pretrained(output_dir)
-                        torch.save(args, os.path.join(output_dir, "training_args.bin"))
-                        logger.info("Saving model checkpoint to %s", output_dir)
-
-                if args.max_steps > 0 and global_step > args.max_steps:
-                    epoch_iterator.close()
-                    break
-
-            if args.max_steps > 0 and global_step > args.max_steps:
-                train_iterator.close()
-                break
-
-        return global_step, tr_loss / global_step
