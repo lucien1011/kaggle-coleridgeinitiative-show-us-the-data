@@ -64,6 +64,16 @@ evaluate_cfg = ObjDict(
         )
 
 # __________________________________________________________________ ||
+extract_cfg = ObjDict(
+        pretrain_model = os.path.join("log",name,"checkpoint-40000"),
+        device = 'cpu',
+        test = True,
+        write_predicted_only = True,
+        write_per_step = 1,
+        extract_text_path = os.path.join('log',name,'extract_test_40000.txt'),
+        )
+
+# __________________________________________________________________ ||
 slurm_job_dir = os.path.join('job/',name+'/')
 slurm_cfg = ObjDict(
     name = name,

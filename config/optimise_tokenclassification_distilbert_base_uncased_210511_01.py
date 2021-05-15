@@ -55,10 +55,22 @@ train_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 evaluate_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-30000"),
+        pretrain_model = os.path.join("log",name,"checkpoint-40000"),
         device = 'cuda',
         batch_size = 256,
-        output_text_path = 'tmp/predict_test_tokenclassification.txt',
+        test = True,
+        output_text_path = os.path.join('tmp',name+'_test.txt'),
+        extract_text_path = os.path.join('tmp',name+'_extract.txt'),
+        )
+
+# __________________________________________________________________ ||
+extract_cfg = ObjDict(
+        pretrain_model = os.path.join("log",name,"checkpoint-5000"),
+        device = 'cpu',
+        test = True,
+        write_predicted_only = True,
+        write_per_step = 1,
+        extract_text_path = os.path.join('log',name,'extract_test_5000.txt'),
         )
 
 # __________________________________________________________________ ||

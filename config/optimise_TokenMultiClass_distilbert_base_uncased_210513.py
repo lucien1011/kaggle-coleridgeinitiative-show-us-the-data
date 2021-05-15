@@ -60,8 +60,6 @@ evaluate_cfg = ObjDict(
         device = 'cuda',
         batch_size = 256,
         test = True,
-        output_text_path = os.path.join('tmp',name+'_test.txt'),
-        extract_text_path = os.path.join('tmp',name+'_extract.txt'),
         )
 
 # __________________________________________________________________ ||
@@ -71,7 +69,7 @@ extract_cfg = ObjDict(
         test = True,
         write_predicted_only = True,
         write_per_step = 1,
-        extract_text_path = os.path.join('tmp',name+'_extract_test_8000.txt'),
+        extract_text_path = os.path.join('log',name,'extract_test_8000.txt'),
         )
 
 # __________________________________________________________________ ||

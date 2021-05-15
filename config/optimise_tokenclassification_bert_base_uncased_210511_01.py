@@ -63,12 +63,12 @@ evaluate_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 extract_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-50000"),
-        device = 'cuda',
-        test = False,
+        pretrain_model = os.path.join("log",name,"checkpoint-10000"),
+        device = 'cpu',
+        test = True,
         write_predicted_only = True,
-        write_per_step = 500,
-        extract_text_path = os.path.join('tmp',name+'_extract_train.txt'),
+        write_per_step = 1,
+        extract_text_path = os.path.join('log',name,'extract_test_10000.txt'),
         )
 
 # __________________________________________________________________ ||

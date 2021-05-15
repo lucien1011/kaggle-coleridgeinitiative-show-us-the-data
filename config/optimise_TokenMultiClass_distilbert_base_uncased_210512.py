@@ -8,10 +8,10 @@ from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-name = "optimise_questionanswer_distilbert_base_uncased_210512"
+name = "optimise_TokenMultiClass_distilbert_base_uncased_210512"
 base_pretrained = "distilbert-base-uncased"
-preprocess_train_dir = "data/optimise_questionanswer_distilbert_base_uncased_210512/train/" 
-preprocess_test_dir = "data/optimise_questionanswer_distilbert_base_uncased_210512/test/" 
+preprocess_train_dir = "data/optimise_TokenMultiClass_distilbert_base_uncased_210512/train/" 
+preprocess_test_dir = "data/optimise_TokenMultiClass_distilbert_base_uncased_210512/test/" 
 label_list = [0,1,2,3]
 
 # __________________________________________________________________ ||
