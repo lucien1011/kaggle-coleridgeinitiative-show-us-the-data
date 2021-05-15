@@ -21,13 +21,6 @@ logger = logging.getLogger(__name__)
 
 softmax = torch.nn.Softmax(dim=-1)
 
-def set_seed(args):
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    if args.n_gpu > 0:
-        torch.cuda.manual_seed_all(args.seed)
-
 def make_label(input_ids,dataset_ids,length):
     start_index = 1
     dataset_length = len(dataset_ids)
@@ -55,19 +48,20 @@ def make_label(input_ids,dataset_ids,length):
 
     return output
 
-def compute_metrics(preds,labels,num_classes):
-    probs = softmax(preds.logits).flatten(0,1)
-    labels_flatten = labels.flatten(0,1)
-    return {
-        "accuracy": accuracy(probs,labels_flatten,num_classes=num_classes,average='macro',),
-        #"auroc": auroc(probs,labels_flatten),
-        "f1": f1(probs,labels_flatten,num_classes=num_classes,average='macro',),
-        "precision": precision(probs,labels_flatten,num_classes=num_classes,average='macro',),
-        "recall": recall(probs,labels_flatten,num_classes=num_classes,average='macro',),
-        #"specificity": specificity(probs,labels,num_classes=num_classes),
-    }
-
 class TokenMultiClassifierPipeline(Pipeline):
+
+    @classmethod
+    def compute_metrics(cls,preds,labels,num_classes):
+        probs = softmax(preds.logits).flatten(0,1)
+        labels_flatten = labels.flatten(0,1)
+        return {
+            "accuracy": accuracy(probs,labels_flatten,num_classes=num_classes,average='macro',),
+            #"auroc": auroc(probs,labels_flatten),
+            "f1": f1(probs,labels_flatten,num_classes=num_classes,average='macro',),
+            "precision": precision(probs,labels_flatten,num_classes=num_classes,average='macro',),
+            "recall": recall(probs,labels_flatten,num_classes=num_classes,average='macro',),
+            #"specificity": specificity(probs,labels,num_classes=num_classes),
+        }
 
     def preprocess(self,args):
         if args.load_preprocess:
