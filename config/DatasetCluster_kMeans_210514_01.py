@@ -20,7 +20,7 @@ pipeline = DatasetClusterPipeline()
 embedding_model = DistilBertModel.from_pretrained('model/'+base_pretrained)
 tokenizer = DistilBertTokenizer.from_pretrained('tokenizer/'+base_pretrained)
 
-model = KMeans(n_clusters=20, random_state=0)
+model = KMeans(n_clusters=21, random_state=0,max_iter=1000)
 
 # __________________________________________________________________ ||
 preprocess_cfg = ObjDict(
@@ -33,10 +33,18 @@ preprocess_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 train_cfg = ObjDict(
+        random_state=0,
+        output_dir = os.path.join('log/',name),
+        saved_model_path = "saved_model.sav",
+        )
+
+# __________________________________________________________________ ||
+optimise_cfg = ObjDict(
         nKs = 60,
         random_state=0,
         max_iter=1000,
         output_dir = os.path.join('log/',name),
+        saved_model_path = "saved_model.sav",
         )
 
 # __________________________________________________________________ ||

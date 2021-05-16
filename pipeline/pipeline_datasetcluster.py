@@ -1,5 +1,6 @@
 import os
 import torch
+import joblib
 import pandas as pd
 import numpy as np
 from sklearn import metrics
@@ -59,6 +60,15 @@ class DatasetClusterPipeline(Pipeline):
             np.save(open(os.path.join(args.preprocess_train_dir,"attention_mask.npy"),"wb"),tokenized_inputs['attention_mask'],)
 
     def train(self,inputs,model,args):
+        x = inputs.similarity
+        self.print_header()
+        print("Training model")
+        model = model.fit(x)
+        self.print_header()
+        print("Saving model")
+        joblib.dump(model,os.path.join(args.output_dir,args.saved_model_path))
+
+    def optimise(self,inputs,model,args):
         
         #x = np.reshape(inputs.embedding,(inputs.embedding.shape[0],inputs.embedding.shape[1]*inputs.embedding.shape[2]))
         x = inputs.similarity
