@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 
 from transformers import AdamW, get_linear_schedule_with_warmup
-from transformers import AutoTokenizer
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
 from torchmetrics.functional import accuracy,auroc,f1,precision,recall
 from tqdm import tqdm, trange
@@ -95,12 +94,21 @@ class TokenMultiClassifierPipeline(Pipeline):
         df = pd.read_csv(args.train_csv_path)
 
         self.print_header()
+        self.start_count_time("Tokenize")
         print("Tokenize text ")
         print("Dataframe shape: ",df.shape)
         self.print_header()
-        tokenized_inputs = tokenizer(df['text'].tolist(),padding='max_length',max_length=512,truncation=True,return_overflowing_tokens=True,return_tensors='pt',)
-
+        tokenized_inputs = tokenizer(
+                df['text'].tolist(),
+                padding='max_length',
+                max_length=512,
+                truncation=True,
+                return_overflowing_tokens=True,
+                return_tensors='pt',
+                )
+        self.print_elapsed_time("Tokenize")
         self.print_header()
+        
         print("Make labels")
         self.print_header()
         labels = []
@@ -137,7 +145,14 @@ class TokenMultiClassifierPipeline(Pipeline):
     def create_preprocess_test_data(self,args):
         tokenizer = args.tokenizer
         df = pd.read_csv(args.test_csv_path)
-        tokenized_inputs = tokenizer(df['text'].tolist(),padding='max_length',max_length=512,truncation=True,return_overflowing_tokens=True,return_tensors="pt")
+        tokenized_inputs = tokenizer(
+                df['text'].tolist(),
+                padding='max_length',
+                max_length=512,
+                truncation=True,
+                return_overflowing_tokens=True,
+                return_tensors="pt"
+                )
         tokenized_inputs['id'] = df['id'].tolist()
 
         if args.preprocess_test_dir:

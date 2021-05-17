@@ -2,6 +2,7 @@ import os
 import torch
 import logging
 import random
+import time
 import numpy as np
 
 from transformers import AdamW, get_linear_schedule_with_warmup
@@ -12,13 +13,22 @@ logger = logging.getLogger(__name__)
 
 class Pipeline(object):
     def __init__(self):
-        pass
+        self.start_times = {}
 
     def save(self):
         pass
 
     def predict(self):
         pass
+
+    def start_count_time(self,key):
+        if key not in self.start_times:
+            self.start_times[key] = time.time()
+
+    def print_elapsed_time(self,key):
+        if key in self.start_times:
+            elapsed_time = time.time() - self.start_times[key]
+            print("Time used: {time:4.2f} seconds".format(time=elapsed_time))
 
     @classmethod
     def compute_metrics(cls,preds,labels):
@@ -50,9 +60,16 @@ class Pipeline(object):
                     {"params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],"weight_decay": args.weight_decay},
                     {"params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], "weight_decay": 0.0}
                                 ]
-        optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
+        optimizer = AdamW(
+                optimizer_grouped_parameters,
+                lr=args.learning_rate, 
+                betas=args.betas,
+                eps=args.adam_epsilon,
+                weight_decay=args.weight_decay,
+                )
         num_warmup_steps = args.warmup_steps if args.warmup_steps >= 1 else int(t_total*args.warmup_steps)
         scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total)
+
         if args.n_gpu > 1:
             model = torch.nn.DataParallel(model)
 
