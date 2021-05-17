@@ -28,22 +28,23 @@ def make_label(input_ids,dataset_ids,length):
 
     while start_index + dataset_length < seq_length:
         if not all([input_ids[start_index+i] == dataset_ids[i] for i in range(dataset_length)]):
-            found_indices.append(start_index)
-            start_index += dataset_length
+            start_index += 1 
         else:
+            found_indices.append(start_index)
             found = True
-            break
+            start_index += dataset_length
 
     output = [0 for _ in range(length)]
     if found_indices:
         for start_index in found_indices:
             for i in range(dataset_length):
-                if i == 0:
-                    output[start_index+i] = 1
-                elif i == dataset_length - 1:
-                    output[start_index+i] = 3
-                else:
-                    output[start_index+i] = 2
+                output[start_index+i] = 1
+                #if i == 0:
+                #    output[start_index+i] = 1
+                #elif i == dataset_length - 1:
+                #    output[start_index+i] = 3
+                #else:
+                #    output[start_index+i] = 2
 
     return output
 
