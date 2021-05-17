@@ -70,9 +70,9 @@ class TokenMultiClassifierPipeline(Pipeline):
             return self.create_preprocess_train_data(args)
 
     def load_preprocess_train_data(self,args):
-        input_ids = torch.load(os.path.join(args.preprocess_train_dir,"input_ids.pt"))
-        attention_mask = torch.load(os.path.join(args.preprocess_train_dir,"attention_mask.pt"))
-        labels = torch.load(os.path.join(args.preprocess_train_dir,"multilabels.pt"))
+        input_ids = torch.load(os.path.join(args.preprocess_train_dir,args.input_ids_name))
+        attention_mask = torch.load(os.path.join(args.preprocess_train_dir,args.attention_mask_name))
+        labels = torch.load(os.path.join(args.preprocess_train_dir,args.labels_name))
 
         dataset = TensorDataset(input_ids,attention_mask,labels)
         train_size = int(args.train_size * len(dataset))
@@ -124,10 +124,10 @@ class TokenMultiClassifierPipeline(Pipeline):
         self.print_header()
         if args.preprocess_train_dir:
             mkdir_p(args.preprocess_train_dir)
-            torch.save(tokenized_inputs['input_ids'],os.path.join(args.preprocess_train_dir,"input_ids.pt"))
-            torch.save(tokenized_inputs['attention_mask'],os.path.join(args.preprocess_train_dir,"attention_mask.pt"))
-            torch.save(tokenized_inputs['overflow_to_sample_mapping'],os.path.join(args.preprocess_train_dir,"overflow_to_sample_mapping.pt"))
-            torch.save(tokenized_inputs['labels'],os.path.join(args.preprocess_train_dir,"labels.pt"))
+            torch.save(tokenized_inputs['input_ids'],os.path.join(args.preprocess_train_dir,args.input_ids_name))
+            torch.save(tokenized_inputs['attention_mask'],os.path.join(args.preprocess_train_dir,args.attention_mask_name))
+            torch.save(tokenized_inputs['overflow_to_sample_mapping'],os.path.join(args.preprocess_train_dir,args.overflow_to_sample_mapping_name))
+            torch.save(tokenized_inputs['labels'],os.path.join(args.preprocess_train_dir,args.labels_name))
         
         dataset = TensorDataset(tokenized_inputs['input_ids'],tokenized_inputs['attention_mask'],tokenized_inputs['labels'])
         train_size = int(args.train_size * len(dataset))

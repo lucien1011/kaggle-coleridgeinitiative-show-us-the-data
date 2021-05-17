@@ -123,8 +123,8 @@ class Pipeline(object):
                             preds_val = model(**batch_val)
                             val_loss = preds_val[0]
                             preds_train = model(**batch_train)
-                            metrics_train = self.compute_metrics(preds_train,batch_train['labels'])
-                            metrics_val = self.compute_metrics(preds_val,batch_val['labels'])
+                            metrics_train = self.compute_metrics(preds_train,batch_train['labels'],num_classes=model.num_labels)
+                            metrics_val = self.compute_metrics(preds_val,batch_val['labels'],num_classes=model.num_labels)
 
                         tqdm.write("*"*100)
                         tqdm.write("global step {global_step}".format(global_step=global_step))
