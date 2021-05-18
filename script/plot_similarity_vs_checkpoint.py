@@ -14,7 +14,7 @@ from utils.mkdir_p import mkdir_p
 
 # __________________________________________________________________ ||
 device = 'cuda'
-plot_per_checkpt = 5
+plot_per_checkpt = 1
 
 # __________________________________________________________________ ||
 def calculate_dataset_emb(model,dataset_inputs,device):
@@ -94,4 +94,4 @@ if __name__ == "__main__":
     ax[1].set_xlabel("training step")
     
     mkdir_p(cfg.train_cfg.output_dir)
-    fig.savefig(os.path.join(cfg.train_cfg.output_dir,"metric_vs_training_step.png"))
+    fig.savefig(os.path.join(cfg.train_cfg.output_dir,"similarity_vs_training_step.png"))
