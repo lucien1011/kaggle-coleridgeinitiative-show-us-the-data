@@ -13,7 +13,7 @@ from utils.objdict import ObjDict
 from utils.mkdir_p import mkdir_p
 
 # __________________________________________________________________ ||
-device = 'cpu'
+device = 'cuda'
 plot_per_checkpt = 5
 
 # __________________________________________________________________ ||
