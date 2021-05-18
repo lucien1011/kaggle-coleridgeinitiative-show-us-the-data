@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 softmax = torch.nn.Softmax(dim=-1)
         
 from torch.nn import CosineSimilarity
-cos = CosineSimilarity(dim=2,eps=1e-6)
+cos = CosineSimilarity(dim=1,eps=1e-6)
 
 def make_label(input_ids,dataset_ids,length):
     start_index = 1
@@ -208,7 +208,7 @@ class TokenMultiClassifierPipeline(Pipeline):
 
                     if pred_label_idx.numel():
                         pred_label = torch.squeeze(batch_test['input_ids'])[pred_label_idx]
-                        min_context_sims.append(self.calculate_min_context_similarity(model,dataset_emb,pred_label))
+                        min_context_sims.append(self.calculate_min_context_similarity(model,dataset_emb,pred_label,seq_length))
             self.print_header()
             print("minimum context similarity / number of prediction: {cos} / {npred:d}".format(
                 cos=str(torch.mean(torch.stack(min_context_sims))),
@@ -219,7 +219,7 @@ class TokenMultiClassifierPipeline(Pipeline):
 
 
     @classmethod
-    def calculate_min_context_similarity(cls,model,dataset_emb,pred_label):
+    def calculate_min_context_similarity(cls,model,dataset_emb,pred_label,seq_length):
         """
         dataset_emb: [ number of dataset names , sequence_length , embedding_dimension ]
         pred_label: [ number of predicted tokens ]
@@ -227,10 +227,18 @@ class TokenMultiClassifierPipeline(Pipeline):
         """
         pred_length = len(pred_label)
         pred_length = pred_label.numel()
-        seq_length = int(dataset_emb.size(1))
-        pred_label = torch.nn.functional.pad(pred_label,pad=(0,seq_length-pred_length))
-        pred_emb = model(input_ids=torch.unsqueeze(pred_label,axis=0),output_hidden_states=True).hidden_states[-1]
+        pred_label = torch.nn.functional.pad(pred_label,pad=(1,0),value=101)
+        pred_label = torch.nn.functional.pad(pred_label,pad=(0,1),value=102)
+        pred_label = torch.nn.functional.pad(pred_label,pad=(0,seq_length-pred_length-2),value=0)
+        attention_mask = (pred_label != 0).long()
+        with torch.no_grad():
+            pred_emb = model(
+                    input_ids=torch.unsqueeze(pred_label,axis=0),
+                    attention_mask=attention_mask,
+                    output_hidden_states=True,
+                    ).hidden_states[-1][:,0,:]
         sim_matrix = cos(dataset_emb,pred_emb)
-        min_context_sim = torch.min(torch.sqrt(torch.sum(sim_matrix**2,axis=1)))
-        return min_context_sim
+        #context_sim = torch.min(torch.sqrt(torch.sum(sim_matrix**2,axis=1)))
+        context_sim = torch.max(sim_matrix)
+        return context_sim
 

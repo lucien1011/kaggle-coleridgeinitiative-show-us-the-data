@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 
-from transformers import DistilBertForTokenClassification,DistilBertTokenizerFast,DistilBertConfig
+from transformers import DistilBertForTokenClassification,DistilBertTokenizerFast,DistilBertConfig,DistilBertModel
 
 from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
