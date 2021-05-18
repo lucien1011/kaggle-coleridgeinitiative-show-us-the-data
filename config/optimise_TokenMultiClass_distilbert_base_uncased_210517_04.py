@@ -8,11 +8,11 @@ from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-name = "optimise_TokenMultiClass_distilbert_base_uncased_210517_01"
+name = "optimise_TokenMultiClass_distilbert_base_uncased_210517_04"
 base_pretrained = "distilbert-base-uncased"
 preprocess_train_dir = "data/optimise_TokenMultiClass_distilbert_base_uncased_210517/train/" 
 preprocess_test_dir = "data/optimise_TokenMultiClass_distilbert_base_uncased_210517/test/" 
-label_list = range(22)
+label_list = range(4)
 
 # __________________________________________________________________ ||
 pipeline = TokenMultiClassifierPipeline()
@@ -23,19 +23,19 @@ tokenizer = DistilBertTokenizerFast.from_pretrained('tokenizer/'+base_pretrained
 
 # __________________________________________________________________ ||
 preprocess_cfg = ObjDict(
-        train_csv_path = "data/train_sequence_has_dataset.csv",
-        train_size = 0.8,
-        val_size = 0.1,
-        tokenizer = tokenizer,
-        preprocess_train_dir = preprocess_train_dir,
-        load_preprocess = True,
-        test_csv_path = 'data/test_sequence.csv',
-        preprocess_test_dir = preprocess_test_dir,
-        input_ids_name = "input_ids.pt",
-        attention_mask_name = "attention_mask.pt",
-        labels_name = "clusterlabels.pt",
-        overflow_to_sample_mapping_name = "overflow_to_sample_mapping.pt",
-        )
+    train_csv_path = "data/train_sequence_has_dataset.csv",
+    train_size = 0.8,
+    val_size = 0.1,
+    tokenizer = tokenizer,
+    preprocess_train_dir = preprocess_train_dir,
+    load_preprocess = True,
+    test_csv_path = 'data/test_sequence.csv',
+    preprocess_test_dir = preprocess_test_dir,
+    input_ids_name = "input_ids.pt",
+    attention_mask_name = "attention_mask.pt",
+    labels_name = "multilabels.pt",
+    overflow_to_sample_mapping_name = "overflow_to_sample_mapping.pt",
+    )
 
 # __________________________________________________________________ ||
 train_cfg = ObjDict(
@@ -46,7 +46,7 @@ train_cfg = ObjDict(
         learning_rate = 2e-5,
         betas=(0.9,0.999),
         adam_epsilon = 1e-9,
-        weight_decay = 0.01,
+        weight_decay = 0.0,
         warmup_steps = 0.1,
         gradient_accumulation_steps = 1,
         seed = 1,
@@ -61,7 +61,7 @@ train_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 evaluate_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-8000"),
+        pretrain_model = os.path.join("log",name,"checkpoint-48000"),
         device = 'cuda',
         batch_size = 1,
         test = True,
@@ -71,12 +71,12 @@ evaluate_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 extract_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-26000"),
+        pretrain_model = os.path.join("log",name,"checkpoint-86000"),
         device = 'cuda',
         test = True,
         write_predicted_only = True,
         write_per_step = 1,
-        extract_text_path = os.path.join('log',name,'extract_test_26000.txt'),
+        extract_text_path = os.path.join('log',name,'extract_test_86000.txt'),
         )
 
 # __________________________________________________________________ ||

@@ -61,24 +61,26 @@ train_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 evaluate_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-8000"),
+        pretrain_model = os.path.join("log",name,"checkpoint-48000"),
         device = 'cuda',
-        batch_size = 256,
+        batch_size = 1,
         test = True,
+        print_per_step = 1,
+        dataset_tokens_path = "data/optimise_TokenMultiClass_distilbert_base_uncased_210517/train/dataset_tokens.pt",
         )
 
 # __________________________________________________________________ ||
 extract_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-26000"),
+        pretrain_model = os.path.join("log",name,"checkpoint-86000"),
         device = 'cuda',
         test = True,
         write_predicted_only = True,
         write_per_step = 1,
-        extract_text_path = os.path.join('log',name,'extract_test_26000.txt'),
+        extract_text_path = os.path.join('log',name,'extract_test_86000.txt'),
         )
 
 # __________________________________________________________________ ||
-slurm_job_dir = os.path.join('job/',name+'/')
+slurm_job_dir = os.path.join('log/',name+'/')
 slurm_cfg = ObjDict(
     name = name,
     slurm_cfg_name = 'submit.cfg',
