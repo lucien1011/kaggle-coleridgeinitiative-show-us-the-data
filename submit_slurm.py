@@ -13,13 +13,13 @@ def submit(cfg_path,cfg_name='slurm_cfg',):
     worker.make_sbatch_script(
             script_file_name,
             cfg.name,
-            "kin.ho.lo@cern.ch",
+            cfg.email,
             "1",
-            "16gb",
-            "72:00:00",
+            cfg.memory,
+            cfg.time,
             cfg.slurm_job_dir,
             cfg.slurm_commands,
-            gpu="geforce:1",
+            gpu=cfg.gpu,
             )
     worker.sbatch_submit(script_file_name)
 
