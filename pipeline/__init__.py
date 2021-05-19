@@ -87,7 +87,7 @@ class Pipeline(object):
         model.zero_grad()
         train_iterator = trange(int(args.num_train_epochs), desc="Epoch",)
         self.set_seed(args)
-        for _ in train_iterator:
+        for epoch in train_iterator:
             epoch_iterator = tqdm(train_dataloader, desc="Iteration",)
             tr_loss_per_epoch = 0.0
             for step, batch in enumerate(epoch_iterator):
@@ -139,13 +139,13 @@ class Pipeline(object):
                             ))
 
                     if args.save_steps > 0 and global_step % args.save_steps == 0:
-                        output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(global_step))
-                        if not os.path.exists(output_dir):
-                            os.makedirs(output_dir)
-                        model_to_save = model.module if hasattr(model, "module") else model
-                        model_to_save.save_pretrained(output_dir)
-                        torch.save(args, os.path.join(output_dir, "training_args.bin"))
-                        logger.info("Saving model checkpoint to %s", output_dir)
+                        output_dir = os.path.join(args.output_dir, "checkpoint-step-{}".format(global_step))
+                        self.save_model(model,args,output_dir) 
+                        logger.info("Saving model checkpoint (per training step) to %s", output_dir)
+
+                output_dir = os.path.join(args.output_dir,"checkpoint-epoch-{}".format(epoch))
+                self.save_model(model,args,output_dir) 
+                logger.info("Saving model checkpoint (per epoch) to %s", output_dir)
 
                 if args.max_steps > 0 and global_step > args.max_steps:
                     epoch_iterator.close()
@@ -156,3 +156,11 @@ class Pipeline(object):
                 break
 
         return global_step, tr_loss / global_step
+
+    @classmethod
+    def save_model(cls,model,args,output_dir):
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        model_to_save = model.module if hasattr(model, "module") else model
+        model_to_save.save_pretrained(output_dir)
+        torch.save(args, os.path.join(output_dir, "training_args.bin"))
