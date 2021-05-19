@@ -41,13 +41,13 @@ def make_label(input_ids,dataset_ids,length):
     if found_indices:
         for start_index in found_indices:
             for i in range(dataset_length):
-                output[start_index+i] = 1
-                #if i == 0:
-                #    output[start_index+i] = 1
-                #elif i == dataset_length - 1:
-                #    output[start_index+i] = 3
-                #else:
-                #    output[start_index+i] = 2
+                #output[start_index+i] = 1
+                if i == 0:
+                    output[start_index+i] = 1
+                elif i == dataset_length - 1:
+                    output[start_index+i] = 3
+                else:
+                    output[start_index+i] = 2
 
     return output
 

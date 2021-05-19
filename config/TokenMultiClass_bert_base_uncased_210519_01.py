@@ -2,24 +2,27 @@ import os
 import numpy as np
 import torch
 
-from transformers import DistilBertForTokenClassification,DistilBertTokenizerFast,DistilBertConfig,DistilBertModel
+from transformers import BertForTokenClassification,BertTokenizerFast,BertConfig,BertModel
 
 from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-name = "optimise_TokenMultiClass_distilbert_base_uncased_210517_05"
-base_pretrained = "distilbert-base-uncased"
-preprocess_train_dir = "data/optimise_TokenMultiClass_distilbert_base_uncased_210517/train/" 
-preprocess_test_dir = "data/optimise_TokenMultiClass_distilbert_base_uncased_210517/test/" 
-label_list = range(22)
+name = "TokenMultiClass_bert_base_uncased_210519_01"
+base_pretrained = "bert-base-uncased"
+
+t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/data/"
+preprocess_train_dir = os.path.join(t2_dir,name,"train/")
+preprocess_test_dir = os.path.join(t2_dir,name,"test/")
+
+label_list = range(4)
 
 # __________________________________________________________________ ||
 pipeline = TokenMultiClassifierPipeline()
 
-model = DistilBertForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list))
+model = BertForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list))
 
-tokenizer = DistilBertTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
+tokenizer = BertTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
 
 # __________________________________________________________________ ||
 preprocess_cfg = ObjDict(
@@ -28,21 +31,21 @@ preprocess_cfg = ObjDict(
         val_size = 0.1,
         tokenizer = tokenizer,
         preprocess_train_dir = preprocess_train_dir,
-        load_preprocess = True,
+        load_preprocess = False,
         test_csv_path = 'data/test_sequence.csv',
         preprocess_test_dir = preprocess_test_dir,
         input_ids_name = "input_ids.pt",
         attention_mask_name = "attention_mask.pt",
-        labels_name = "clusterlabels.pt",
+        labels_name = "multilabels.pt",
         overflow_to_sample_mapping_name = "overflow_to_sample_mapping.pt",
         )
 
 # __________________________________________________________________ ||
 train_cfg = ObjDict(
-        train_batch_size = 16,
+        train_batch_size = 4,
         per_gpu_train_batch_size = 1,
         val_batch_size = 128,
-        num_train_epochs = 10,
+        num_train_epochs = 1,
         learning_rate = 2e-5,
         betas=(0.9,0.999),
         adam_epsilon = 1e-9,
@@ -52,7 +55,7 @@ train_cfg = ObjDict(
         seed = 1,
         device = 'cuda',
         max_grad_norm = 9999.,
-        save_steps = 1000,
+        save_steps = 0,
         output_dir = os.path.join('log/',name),
         max_steps = 999999999.,
         n_gpu = 0,
@@ -96,4 +99,8 @@ python3 {pyscript} {cfg_path}
             base_path=os.environ['BASE_PATH'],
             output_path=slurm_job_dir,
             ),
+    memory = '32gb',
+    email = 'kin.ho.lo@cern.ch',
+    time = '72:00:00',
+    gpu = 'geforce:1',
     )
