@@ -143,13 +143,14 @@ class Pipeline(object):
                         self.save_model(model,args,output_dir) 
                         logger.info("Saving model checkpoint (per training step) to %s", output_dir)
 
-                output_dir = os.path.join(args.output_dir,"checkpoint-epoch-{}".format(epoch))
-                self.save_model(model,args,output_dir) 
-                logger.info("Saving model checkpoint (per epoch) to %s", output_dir)
-
                 if args.max_steps > 0 and global_step > args.max_steps:
                     epoch_iterator.close()
                     break
+            
+            output_dir = os.path.join(args.output_dir,"checkpoint-epoch-{}".format(epoch))
+            self.save_model(model,args,output_dir) 
+            logger.info("Saving model checkpoint (per epoch) to %s", output_dir)
+
 
             if args.max_steps > 0 and global_step > args.max_steps:
                 train_iterator.close()
