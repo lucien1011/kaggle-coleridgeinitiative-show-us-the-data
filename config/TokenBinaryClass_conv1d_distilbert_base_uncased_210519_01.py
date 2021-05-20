@@ -2,27 +2,39 @@ import os
 import numpy as np
 import torch
 
-from transformers import BertForTokenClassification,BertTokenizerFast,BertConfig,BertModel
+from transformers import DistilBertTokenizerFast
 
+from model.conv1d import DistilBertConv1dForTokenClassification,DistilBertConv1dConfig
 from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-name = "TokenMultiClass_bert_large_uncased_210519_01"
-base_pretrained = "bert-large-uncased"
+name = "TokenBinaryClass_conv1d_distilbert_base_uncased_210519_01"
+base_pretrained = "distilbert-base-uncased"
 
 t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/data/"
 preprocess_train_dir = os.path.join(t2_dir,name,"train/")
 preprocess_test_dir = os.path.join(t2_dir,name,"test/")
 
-label_list = range(4)
+label_list = range(2)
+nlabel = len(label_list)
 
 # __________________________________________________________________ ||
 pipeline = TokenMultiClassifierPipeline()
 
-model = BertForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list))
+config = DistilBertConv1dConfig(
+        num_labels = nlabel,
+        conv_setting = [
+            {"in_channels":768, "out_channels":16, "kernel_size":15,},
+            {"in_channels":16, "out_channels":nlabel, "kernel_size":15,},
+            ],
+        )
+model = DistilBertConv1dForTokenClassification.from_pretrained(
+    'model/'+base_pretrained,
+    config=config,
+    )
 
-tokenizer = BertTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
+tokenizer = DistilBertTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
 
 # __________________________________________________________________ ||
 preprocess_cfg = ObjDict(
@@ -36,7 +48,7 @@ preprocess_cfg = ObjDict(
         preprocess_test_dir = preprocess_test_dir,
         input_ids_name = "input_ids.pt",
         attention_mask_name = "attention_mask.pt",
-        labels_name = "multilabels.pt",
+        labels_name = "labels.pt",
         overflow_to_sample_mapping_name = "overflow_to_sample_mapping.pt",
         )
 
@@ -74,12 +86,12 @@ evaluate_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 extract_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-26000"),
+        pretrain_model = os.path.join("log",name,"checkpoint-epoch-0"),
         device = 'cuda',
         test = True,
         write_predicted_only = True,
         write_per_step = 1,
-        extract_text_path = os.path.join('log',name,'extract_test_26000.txt'),
+        extract_text_path = os.path.join('log',name,'checkpoint-epoch-0.txt'),
         )
 
 # __________________________________________________________________ ||
@@ -102,5 +114,5 @@ python3 {pyscript} {cfg_path}
     memory = '32gb',
     email = 'kin.ho.lo@cern.ch',
     time = '72:00:00',
-    gpu = 'quadro',
+    gpu = 'geforce:1',
     )
