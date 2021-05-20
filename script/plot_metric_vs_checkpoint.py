@@ -15,6 +15,7 @@ from utils.mkdir_p import mkdir_p
 # __________________________________________________________________ ||
 device = 'cuda'
 plot_per_checkpt = 1
+replace_str = "checkpoint-epoch-"
 
 # __________________________________________________________________ ||
 def compute_metrics(model,inputs,device,pipeline):
@@ -39,7 +40,7 @@ if __name__ == "__main__":
     print("Finsih loading inputs")
  
     out_dict = {}
-    checkpts = [c for c in os.listdir(cfg.train_cfg.output_dir) if "checkpoint" in c]
+    checkpts = [c for c in os.listdir(cfg.train_cfg.output_dir) if replace_str in c]
     checkpts.sort()
     for i in tqdm(range(len(checkpts))):
         
@@ -51,7 +52,7 @@ if __name__ == "__main__":
         metrics = compute_metrics(model,inputs,device,pipeline)
         tqdm.write("Finish processing checkpoint "+c)
         
-        c_int = int(c.replace("checkpoint-",""))
+        c_int = int(c.replace(replace_str,""))
         for name,value in metrics.items():
             if name not in out_dict:
                 out_dict[name] = {}

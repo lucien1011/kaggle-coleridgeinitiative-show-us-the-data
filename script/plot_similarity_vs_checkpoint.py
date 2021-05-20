@@ -15,6 +15,7 @@ from utils.mkdir_p import mkdir_p
 # __________________________________________________________________ ||
 device = 'cuda'
 plot_per_checkpt = 1
+replace_str = "checkpoint-epoch-"
 
 # __________________________________________________________________ ||
 def calculate_dataset_emb(model,dataset_inputs,device):
@@ -60,7 +61,7 @@ if __name__ == "__main__":
  
     sim_dict = {}
     npred_dict = {}
-    checkpts = [c for c in os.listdir(cfg.train_cfg.output_dir) if "checkpoint" in c]
+    checkpts = [c for c in os.listdir(cfg.train_cfg.output_dir) if replace_str in c]
     checkpts.sort()
     for i in tqdm(range(len(checkpts))):
         
@@ -75,7 +76,7 @@ if __name__ == "__main__":
         
         tqdm.write("Finish processing checkpoint "+c)
         
-        c_int = int(c.replace("checkpoint-",""))
+        c_int = int(c.replace(replace_str,""))
         sim_dict[c_int] = sim
         npred_dict[c_int] = npred
 
