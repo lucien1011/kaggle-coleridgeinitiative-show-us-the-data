@@ -10,9 +10,13 @@ from utils.objdict import ObjDict
 # __________________________________________________________________ ||
 name = "optimise_TokenMultiClass_distilbert_base_uncased_210517_04"
 base_pretrained = "distilbert-base-uncased"
-preprocess_train_dir = "data/optimise_TokenMultiClass_distilbert_base_uncased_210517/train/" 
-preprocess_test_dir = "data/optimise_TokenMultiClass_distilbert_base_uncased_210517/test/" 
+
+t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/data/"
+preprocess_train_dir = os.path.join(t2_dir,"optimise_TokenMultiClass_distilbert_base_uncased_210517","train/")
+preprocess_test_dir = os.path.join(t2_dir,"optimise_TokenMultiClass_distilbert_base_uncased_210517","test/")
+
 label_list = range(4)
+nlabel = len(label_list)
 
 # __________________________________________________________________ ||
 pipeline = TokenMultiClassifierPipeline()
@@ -57,6 +61,19 @@ train_cfg = ObjDict(
         max_steps = 999999999.,
         n_gpu = 0,
         logging_steps = 100,
+        )
+
+# __________________________________________________________________ ||
+predict_cfg = ObjDict(
+        model_dir = os.path.join('log',name,),
+        model_key = 'checkpoint-epoch-',
+        device = "cuda",
+        batch_size = 512,
+        output_dir = os.path.join(t2_dir,name,"pred/"),
+        pred_name = "labels",
+        pred_extension = ".pt",
+        dataset_fraction = 0.2,
+        dataset_save_name = "validation_dataset.pt",
         )
 
 # __________________________________________________________________ ||
