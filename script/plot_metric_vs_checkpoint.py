@@ -40,7 +40,7 @@ if __name__ == "__main__":
     print("Finsih loading inputs")
  
     out_dict = {}
-    checkpts = [c for c in os.listdir(cfg.train_cfg.output_dir) if replace_str in c]
+    checkpts = [c for c in os.listdir(cfg.train_cfg.output_dir) if replace_str in c and os.path.isdir(os.path.join(cfg.train_cfg.output_dir,c))]
     checkpts.sort()
     for i in tqdm(range(len(checkpts))):
         
