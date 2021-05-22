@@ -11,6 +11,7 @@ from utils.objdict import ObjDict
 # __________________________________________________________________ ||
 name = "TokenBinaryClass_conv1d_distilbert_base_uncased_210519_01"
 base_pretrained = "distilbert-base-uncased"
+plot_label = "distilBert-base-uncased-conv1d-2layer"
 
 t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/data/"
 preprocess_train_dir = os.path.join(t2_dir,name,"train/")

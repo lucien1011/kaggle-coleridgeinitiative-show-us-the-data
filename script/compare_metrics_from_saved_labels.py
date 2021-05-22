@@ -47,18 +47,20 @@ if __name__ == "__main__":
 
     paths = sys.argv[1].split(",")
     output_dir = sys.argv[2]
+    
     cfgs = [ObjDict.read_all_from_file_python3(p) for p in paths]
-    data = {c.name:compute_metric_dict(c) for c in cfgs}
+    assert all([hasattr(c,"plot_label",) for c in cfgs])
+    
+    data = {c:compute_metric_dict(c) for c in cfgs}
 
     assert len(data) > 0
-    assert all([list(data[c.name].keys()) == list(data[cfgs[0].name].keys()) for c in cfgs[1:]])
+    assert all([list(data[c].keys()) == list(data[cfgs[0]].keys()) for c in cfgs[1:]])
 
-    ip = 0
-    np = len(data[cfgs[0].name])
+    np = len(data[cfgs[0]])
     mkdir_p(output_dir)
-    names = data[cfgs[0].name].keys()
+    names = data[cfgs[0]].keys()
     fig, ax = plt.subplots(figsize=(10, 5))
-    for name in names:
+    for ip,name in enumerate(names):
         print("Plotting "+name)
         fig, ax = plt.subplots(figsize=(10, 5))
         for c,d in data.items():
@@ -66,9 +68,10 @@ if __name__ == "__main__":
             x.sort()
             y = [d[name][i] for i in x]
             
-            ax.plot(x,y,label=c)
+            ax.plot(x,y,label=c.plot_label)
             ax.set_ylabel(name)
             ax.set_xlabel("training step")
+            ax.set_ylim(0.,1.)
             ip += 1
         plt.legend(loc='best')
         print("Saving "+name+" to "+output_dir)

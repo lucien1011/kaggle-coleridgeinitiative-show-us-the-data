@@ -16,6 +16,7 @@ preprocess_train_dir = os.path.join(t2_dir,name,"train/")
 preprocess_test_dir = os.path.join(t2_dir,name,"test/")
 
 label_list = range(4)
+nlabel = len(label_list)
 
 # __________________________________________________________________ ||
 pipeline = TokenMultiClassifierPipeline()
@@ -44,7 +45,7 @@ preprocess_cfg = ObjDict(
 train_cfg = ObjDict(
         train_batch_size = 4,
         per_gpu_train_batch_size = 1,
-        val_batch_size = 128,
+        val_batch_size = 32,
         num_train_epochs = 5,
         learning_rate = 2e-5,
         betas=(0.9,0.999),
@@ -60,6 +61,19 @@ train_cfg = ObjDict(
         max_steps = 999999999.,
         n_gpu = 0,
         logging_steps = 100,
+        )
+
+# __________________________________________________________________ ||
+predict_cfg = ObjDict(
+        model_dir = os.path.join('log',name,),
+        model_key = 'checkpoint-epoch-',
+        device = "cuda",
+        batch_size = 32,
+        output_dir = os.path.join(t2_dir,name,"pred/"),
+        pred_name = "labels",
+        pred_extension = ".pt",
+        dataset_fraction = 0.2,
+        dataset_save_name = "validation_dataset.pt",
         )
 
 # __________________________________________________________________ ||
@@ -102,5 +116,5 @@ python3 {pyscript} {cfg_path}
     memory = '32gb',
     email = 'kin.ho.lo@cern.ch',
     time = '72:00:00',
-    gpu = 'quadro',
+    gpu = 'geforce',
     )
