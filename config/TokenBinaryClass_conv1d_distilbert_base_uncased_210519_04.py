@@ -75,6 +75,19 @@ train_cfg = ObjDict(
         )
 
 # __________________________________________________________________ ||
+predict_cfg = ObjDict(
+        model_dir = os.path.join('log',name,),
+        model_key = 'checkpoint-epoch-',
+        device = "cuda",
+        batch_size = 256,
+        output_dir = os.path.join(t2_dir,name,"pred/"),
+        pred_name = "labels",
+        pred_extension = ".pt",
+        dataset_fraction = 0.2,
+        dataset_save_name = "validation_dataset.pt",
+        )
+
+# __________________________________________________________________ ||
 evaluate_cfg = ObjDict(
         pretrain_model = os.path.join("log",name,"checkpoint-8000"),
         device = 'cuda',
