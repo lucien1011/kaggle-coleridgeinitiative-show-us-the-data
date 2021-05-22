@@ -13,10 +13,7 @@ logger = logging.getLogger(__name__)
 
 class Pipeline(object):
     def __init__(self):
-        self.start_times = {}
-
-    def save(self):
-        pass
+        self.start_times = {} 
 
     def predict(self):
         pass
@@ -29,6 +26,11 @@ class Pipeline(object):
         if key in self.start_times:
             elapsed_time = time.time() - self.start_times[key]
             print("Time used: {time:4.2f} seconds".format(time=elapsed_time))
+
+    @classmethod
+    def save_if_not_exist(cls,dataset,path):
+        if not os.path.exists(path):
+            torch.save(dataset,path)
 
     @classmethod
     def compute_metrics(cls,preds,labels):

@@ -10,6 +10,16 @@ def submit(cfg_path,cfg_name='slurm_cfg',):
     script_file_name = os.path.join(cfg.slurm_job_dir,cfg.slurm_cfg_name)
     
     worker = SLURMWorker()
+    slurm_commands = """
+cd {base_path}
+source setup_hpg.sh
+python3 {pyscript} {cfg_path} {mode}
+""".format(
+            pyscript="run.py",
+            cfg_path="config/"+cfg.name+".py",
+            mode=sys.argv[2],
+            base_path=os.environ['BASE_PATH'],
+            )
     worker.make_sbatch_script(
             script_file_name,
             cfg.name,
@@ -18,7 +28,7 @@ def submit(cfg_path,cfg_name='slurm_cfg',):
             cfg.memory,
             cfg.time,
             cfg.slurm_job_dir,
-            cfg.slurm_commands,
+            slurm_commands,
             gpu=cfg.gpu,
             )
     worker.sbatch_submit(script_file_name)

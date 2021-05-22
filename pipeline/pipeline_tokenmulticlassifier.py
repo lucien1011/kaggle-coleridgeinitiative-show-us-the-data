@@ -77,25 +77,51 @@ class TokenMultiClassifierPipeline(Pipeline):
             return self.create_preprocess_train_data(args)
 
     def load_preprocess_train_data(self,args):
-        input_ids = torch.load(os.path.join(args.preprocess_train_dir,args.input_ids_name))
-        attention_mask = torch.load(os.path.join(args.preprocess_train_dir,args.attention_mask_name))
-        labels = torch.load(os.path.join(args.preprocess_train_dir,args.labels_name))
+        train_dataset_path = os.path.join(args.preprocess_train_dir,"train_dataset.pt")
+        val_dataset_path = os.path.join(args.preprocess_train_dir,"val_dataset.pt")
+        test_dataset_path = os.path.join(args.preprocess_train_dir,"test_dataset.pt")
 
-        dataset = TensorDataset(input_ids,attention_mask,labels)
-        train_size = int(args.train_size * len(dataset))
-        val_size = int(args.val_size * len(dataset))
-        test_size = len(dataset) - train_size - val_size
-        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
-        inputs = ObjDict(
-                dataset = dataset,
-                train_dataset = train_dataset,
-                val_dataset = val_dataset,
-                test_dataset = test_dataset,
-                input_ids = input_ids,
-                attention_mask = attention_mask,
-                labels = labels,
-                )
-        return inputs
+        train_dataset_exists = os.path.exists(train_dataset_path)
+        val_dataset_exists = os.path.exists(val_dataset_path)
+        test_dataset_exists = os.path.exists(test_dataset_path)
+
+        if train_dataset_exists and val_dataset_exists and test_dataset_exists:
+            self.print_message("[load_preprocess_train_data] all dataset exists. Loading presaved dataset.")
+            train_dataset = torch.load(train_dataset_path)
+            val_dataset = torch.load(val_dataset_path)
+            test_dataset = torch.load(test_dataset_path)
+            return ObjDict(
+                    train_dataset = train_dataset,
+                    val_dataset = val_dataset,
+                    test_dataset = test_dataset,
+                    )
+        else:
+            input_ids = torch.load(os.path.join(args.preprocess_train_dir,args.input_ids_name))
+            attention_mask = torch.load(os.path.join(args.preprocess_train_dir,args.attention_mask_name))
+            labels = torch.load(os.path.join(args.preprocess_train_dir,args.labels_name))
+
+            dataset = TensorDataset(input_ids,attention_mask,labels)
+            train_size = int(args.train_size * len(dataset))
+            val_size = int(args.val_size * len(dataset))
+            test_size = len(dataset) - train_size - val_size
+            train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
+
+            if args.preprocess_train_dir:
+                mkdir_p(args.preprocess_train_dir)
+                torch.save(train_dataset,train_dataset_path)
+                torch.save(val_dataset,val_dataset_path)
+                torch.save(test_dataset,test_dataset_path)
+
+            inputs = ObjDict(
+                    dataset = dataset,
+                    train_dataset = train_dataset,
+                    val_dataset = val_dataset,
+                    test_dataset = test_dataset,
+                    input_ids = input_ids,
+                    attention_mask = attention_mask,
+                    labels = labels,
+                    )
+            return inputs
 
     def create_preprocess_train_data(self,args):
         tokenizer = args.tokenizer
