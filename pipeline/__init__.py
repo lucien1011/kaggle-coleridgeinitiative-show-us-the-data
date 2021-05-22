@@ -46,6 +46,16 @@ class Pipeline(object):
         if args.n_gpu > 0:
             torch.cuda.manual_seed_all(args.seed)
 
+    @classmethod
+    def print_message(cls,m):
+        cls.print_header()
+        print(m)
+        cls.print_header()
+
+    @classmethod
+    def get_model_checkpts(cls,input_dir,key):
+        return [c for c in os.listdir(input_dir) if key in c and os.path.isdir(os.path.join(input_dir,c))]
+
     def train(self,inputs,model,args):
         model.to(args.device)
         if not args.train_batch_size:
