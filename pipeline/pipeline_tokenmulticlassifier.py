@@ -54,8 +54,11 @@ def make_label(input_ids,dataset_ids,length):
 class TokenMultiClassifierPipeline(Pipeline):
 
     @classmethod
-    def compute_metrics(cls,preds,labels,num_classes):
-        probs = softmax(preds.logits).flatten(0,1)
+    def compute_metrics(cls,preds,labels,num_classes,islogit=False):
+        if islogit:
+            probs = softmax(preds).flatten(0,1)
+        else:
+            probs = softmax(preds.logits).flatten(0,1)
         labels_flatten = labels.flatten(0,1)
         return {
             "accuracy": accuracy(probs,labels_flatten,num_classes=num_classes,average='macro',),
@@ -181,8 +184,26 @@ class TokenMultiClassifierPipeline(Pipeline):
                 )
         return inputs
 
+    def predict(self,inputs,model,args):
+        checkpts = self.get_model_checkpts(args.model_dir,args.model_key)
+        dataset_size = int(len(inputs.dataset)*args.dataset_fraction)
+        mkdir_p(args.output_dir)
+        dataset,_  = torch.utils.data.random_split(inputs.dataset, [dataset_size,len(inputs.dataset)-dataset_size])
+        torch.save(dataset,os.path.join(args.output_dir,args.dataset_save_name))
+        for c in checkpts:
+            self.print_message("Processing checkpoint "+c) 
+            mkdir_p(os.path.join(args.output_dir,c))
+            model = model.from_pretrained(os.path.join(args.model_dir,c)).to(args.device)
+            dataloader = DataLoader(dataset, batch_size=args.batch_size)
+            iterator = tqdm(dataloader, desc="Iteration",)
+            for step,batch in enumerate(iterator):
+                batch = tuple(t.to(args.device) for t in batch)
+                batch = {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
+                with torch.no_grad():
+                    preds = model(**batch)
+                torch.save(preds,os.path.join(args.output_dir,c,args.pred_name+"_"+str(step)+args.pred_extension)) 
+
     def evaluate(self,inputs,model,args):
-        from torch.utils.data import DataLoader, RandomSampler 
         model = model.from_pretrained(args.pretrain_model).to(args.device)
         dataset_inputs = torch.load(args.dataset_tokens_path)
         test_sampler = RandomSampler(inputs.test_dataset)
