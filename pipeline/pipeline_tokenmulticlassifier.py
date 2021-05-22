@@ -1,4 +1,5 @@
 import os
+import glob
 import pickle
 import torch
 import logging
@@ -192,7 +193,11 @@ class TokenMultiClassifierPipeline(Pipeline):
         torch.save(dataset,os.path.join(args.output_dir,args.dataset_save_name))
         for c in checkpts:
             self.print_message("Processing checkpoint "+c) 
-            mkdir_p(os.path.join(args.output_dir,c))
+            cdir = os.path.join(args.output_dir,c)
+            mkdir_p(cdir)
+            if len(glob.glob(cdir+"*."+args.pred_extension)) > 0: 
+                self.print_message("Skipping "+cdir)
+                continue
             model = model.from_pretrained(os.path.join(args.model_dir,c)).to(args.device)
             dataloader = DataLoader(dataset, batch_size=args.batch_size)
             iterator = tqdm(dataloader, desc="Iteration",)
