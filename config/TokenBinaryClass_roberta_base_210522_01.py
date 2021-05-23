@@ -2,19 +2,19 @@ import os
 import numpy as np
 import torch
 
-from transformers import BertForTokenClassification,BertTokenizerFast,BertConfig,BertModel
+from transformers import RobertaForTokenClassification,RobertaTokenizerFast
 
 from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-name = "TokenBinaryClass_bert_base_uncased_210522_01"
-base_pretrained = "bert-base-uncased"
-plot_label = "bert-base-uncased-linear"
+name = "TokenBinaryClass_roberta_base_210522_01"
+base_pretrained = "roberta-base"
+plot_label = "roberta-base-linear"
 
 t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/data/"
-preprocess_train_dir = os.path.join(t2_dir,"TokenBinaryClass_bert_base_uncased_210522_01","train/")
-preprocess_test_dir = os.path.join(t2_dir,"TokenBinaryClass_bert_base_uncased_210522_01","test/")
+preprocess_train_dir = os.path.join(t2_dir,name,"train/")
+preprocess_test_dir = os.path.join(t2_dir,name,"test/")
 
 label_list = range(2)
 nlabel = len(label_list)
@@ -22,9 +22,9 @@ nlabel = len(label_list)
 # __________________________________________________________________ ||
 pipeline = TokenMultiClassifierPipeline()
 
-model = BertForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list))
+model = RobertaForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list))
 
-tokenizer = BertTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
+tokenizer = RobertaTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
 
 # __________________________________________________________________ ||
 preprocess_cfg = ObjDict(

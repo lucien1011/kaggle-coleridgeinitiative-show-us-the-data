@@ -84,8 +84,7 @@ predict_cfg = ObjDict(
         output_dir = os.path.join(t2_dir,name,"pred/"),
         pred_name = "labels",
         pred_extension = ".pt",
-        dataset_fraction = 0.2,
-        dataset_save_name = "validation_dataset.pt",
+        val_dataset_name = "val_dataset",
         )
 
 # __________________________________________________________________ ||
