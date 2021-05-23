@@ -24,7 +24,7 @@ softmax = torch.nn.Softmax(dim=-1)
 from torch.nn import CosineSimilarity
 cos = CosineSimilarity(dim=1,eps=1e-6)
 
-def make_label(input_ids,dataset_ids,length):
+def make_label(input_ids,dataset_ids,length,binary_label=True):
     start_index = 1
     dataset_length = len(dataset_ids)
     seq_length = len(input_ids)
@@ -40,15 +40,19 @@ def make_label(input_ids,dataset_ids,length):
 
     output = [0 for _ in range(length)]
     if found_indices:
-        for start_index in found_indices:
-            for i in range(dataset_length):
-                #output[start_index+i] = 1
-                if i == 0:
+        if binary_label:
+            for start_index in found_indices:
+                for i in range(dataset_length):
                     output[start_index+i] = 1
-                elif i == dataset_length - 1:
-                    output[start_index+i] = 3
-                else:
-                    output[start_index+i] = 2
+        else:
+            for start_index in found_indices:
+                for i in range(dataset_length):
+                    if i == 0:
+                        output[start_index+i] = 1
+                    elif i == dataset_length - 1:
+                        output[start_index+i] = 3
+                    else:
+                        output[start_index+i] = 2
 
     return output
 
@@ -213,10 +217,8 @@ class TokenMultiClassifierPipeline(Pipeline):
 
     def predict(self,inputs,model,args):
         checkpts = self.get_model_checkpts(args.model_dir,args.model_key)
-        dataset_size = int(len(inputs.dataset)*args.dataset_fraction)
-        mkdir_p(args.output_dir)
-        dataset,_  = torch.utils.data.random_split(inputs.dataset, [dataset_size,len(inputs.dataset)-dataset_size])
-        torch.save(dataset,os.path.join(args.output_dir,args.dataset_save_name))
+        mkdir_p(args.output_dir) 
+        dataset = getattr(inputs,args.val_dataset_name)
         for c in checkpts:
             self.print_message("Processing checkpoint "+c) 
             cdir = os.path.join(args.output_dir,c)
