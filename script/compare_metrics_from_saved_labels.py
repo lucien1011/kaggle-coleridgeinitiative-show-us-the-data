@@ -11,11 +11,12 @@ import matplotlib.pyplot as plt
 from utils.objdict import ObjDict
 from utils.mkdir_p import mkdir_p
 
-def compute_metric_dict(cfg,device='cuda'):
+def compute_metric_dict(cfg,device='cuda',dataset_name="val_dataset.pt"):
 
     pp = cfg.pipeline
+    print("Use dataset: "+dataset_name)
     
-    val_dataset_path = os.path.join(cfg.predict_cfg.output_dir,cfg.predict_cfg.dataset_save_name)
+    val_dataset_path = os.path.join(cfg.preprocess_cfg.preprocess_train_dir,dataset_name)
     val_dataset = torch.load(val_dataset_path)
     
     iterator = DataLoader(val_dataset,batch_size=len(val_dataset))
@@ -47,11 +48,14 @@ if __name__ == "__main__":
 
     paths = sys.argv[1].split(",")
     output_dir = sys.argv[2]
+    dataset_name = "val_dataset.pt" if len(sys.argv) <= 3 else sys.argv[3]
+
+    assert len(paths) > 0
     
     cfgs = [ObjDict.read_all_from_file_python3(p) for p in paths]
     assert all([hasattr(c,"plot_label",) for c in cfgs])
     
-    data = {c:compute_metric_dict(c) for c in cfgs}
+    data = {c:compute_metric_dict(c,dataset_name=dataset_name) for c in cfgs}
 
     assert len(data) > 0
     assert all([list(data[c].keys()) == list(data[cfgs[0]].keys()) for c in cfgs[1:]])
