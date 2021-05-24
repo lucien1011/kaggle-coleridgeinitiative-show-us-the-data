@@ -1,5 +1,7 @@
 import os
 import sys
+import glob
+import argparse
 
 import torch
 from torch.utils.data import DataLoader
@@ -11,12 +13,22 @@ import matplotlib.pyplot as plt
 from utils.objdict import ObjDict
 from utils.mkdir_p import mkdir_p
 
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i','--input_path',type=str)
+    parser.add_argument('-o','--output_dir',type=str)
+    parser.add_argument('-d','--dataset_name',type=str,default="val_dataset.pt",)
+    parser.add_argument('--ymin',type=float,default=0.,)
+    parser.add_argument('--ymax',type=float,default=1.,)
+    return parser.parse_args()
+
 def compute_metric_dict(cfg,device='cuda',dataset_name="val_dataset.pt"):
 
     pp = cfg.pipeline
     print("Use dataset: "+dataset_name)
     
     val_dataset_path = os.path.join(cfg.preprocess_cfg.preprocess_train_dir,dataset_name)
+    if not os.path.exists(val_dataset_path): return dict()
     val_dataset = torch.load(val_dataset_path)
     
     iterator = DataLoader(val_dataset,batch_size=len(val_dataset))
@@ -46,16 +58,26 @@ def compute_metric_dict(cfg,device='cuda',dataset_name="val_dataset.pt"):
 
 if __name__ == "__main__":
 
-    paths = sys.argv[1].split(",")
-    output_dir = sys.argv[2]
-    dataset_name = "val_dataset.pt" if len(sys.argv) <= 3 else sys.argv[3]
+    args = parse_arguments()
+
+    if "*" in args.input_path:
+        paths = glob.glob(args.input_path)
+    else:
+        paths = args.input_path.split(",")
+    output_dir = args.output_dir
+    dataset_name = args.dataset_name
 
     assert len(paths) > 0
     
     cfgs = [ObjDict.read_all_from_file_python3(p) for p in paths]
     assert all([hasattr(c,"plot_label",) for c in cfgs])
     
-    data = {c:compute_metric_dict(c,dataset_name=dataset_name) for c in cfgs}
+    data = {}
+    for c in cfgs:
+        out_dict = compute_metric_dict(c,dataset_name=dataset_name)
+        if out_dict:
+            data[c] = out_dict
+    cfgs = list(data.keys())
 
     assert len(data) > 0
     assert all([list(data[c].keys()) == list(data[cfgs[0]].keys()) for c in cfgs[1:]])
@@ -75,7 +97,7 @@ if __name__ == "__main__":
             ax.plot(x,y,label=c.plot_label)
             ax.set_ylabel(name)
             ax.set_xlabel("training step")
-            ax.set_ylim(0.,1.)
+            ax.set_ylim(args.ymin,args.ymax)
             ip += 1
         plt.legend(loc='best')
         print("Saving "+name+" to "+output_dir)
