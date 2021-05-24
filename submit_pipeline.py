@@ -1,3 +1,11 @@
+import argparse
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('cfg_path')
+    parser.add_argument('--slurm_cfg_name',default='slurm_cfg',)
+    return parser.parse_args()
+
 def submit(cfg_path,cfg_name='slurm_cfg',):
     import os,pickle
     
@@ -34,6 +42,6 @@ python3 {pyscript} {cfg_path} {mode}
     worker.sbatch_submit(script_file_name)
 
 if __name__ == "__main__":
-    import sys
-
-    submit(sys.argv[1])
+    
+    args = parse_arguments()
+    submit(args.cfg_path,args.slurm_cfg_name)
