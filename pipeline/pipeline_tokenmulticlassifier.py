@@ -210,6 +210,14 @@ class TokenMultiClassifierPipeline(Pipeline):
         return tokenized_inputs
     
     def load_preprocess_test_data(self,args):
+        out_input_ids_path = os.path.join(args.preprocess_test_dir,args.input_ids_name)
+        out_attention_mask_path = os.path.join(args.preprocess_test_dir,args.attention_mask_name)
+        #out_overflow_to_sample_mapping_path = os.path.join(args.preprocess_test_dir,args.overflow_to_sample_mapping_name)
+        
+        out_file_paths = [out_input_ids_path,out_attention_mask_path,]
+        assert all([os.path.exists(o) for o in out_file_paths])
+
+        self.print_message("[load_preprocess_test_data] all dataset exists. Loading presaved dataset.")
         #ids = torch.load(os.path.join(args.preprocess_test_dir,"id.pt"))
         input_ids = torch.load(os.path.join(args.preprocess_test_dir,"input_ids.pt"))
         attention_mask = torch.load(os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
@@ -219,7 +227,6 @@ class TokenMultiClassifierPipeline(Pipeline):
                 test_dataset = dataset,
                 input_ids = input_ids,
                 attention_mask = attention_mask,
-                #ids = ids,
                 )
         return inputs
 
@@ -231,7 +238,7 @@ class TokenMultiClassifierPipeline(Pipeline):
             self.print_message("Processing checkpoint "+c) 
             cdir = os.path.join(args.output_dir,c)
             mkdir_p(cdir)
-            if len(glob.glob(cdir+"*."+args.pred_extension)) > 0: 
+            if len(glob.glob(cdir+"*.pt")) > 0: 
                 self.print_message("Skipping "+cdir)
                 continue
             model = model.from_pretrained(os.path.join(args.model_dir,c)).to(args.device)
@@ -244,6 +251,29 @@ class TokenMultiClassifierPipeline(Pipeline):
                     preds = model(**batch)
                 torch.save(preds,os.path.join(args.output_dir,c,args.pred_name+"_"+str(step)+args.pred_extension)) 
 
+    def extract(self,inputs,model,args):
+        checkpts = self.get_model_checkpts(args.model_dir,args.model_key)
+        mkdir_p(args.output_dir) 
+        dataset = getattr(inputs,args.dataset_name)
+        for c in checkpts:
+            self.print_message("Processing checkpoint "+c) 
+            cdir = os.path.join(args.output_dir,c)
+            mkdir_p(cdir)
+            if len(glob.glob(cdir+"*.pt")) > 0: 
+                self.print_message("Skipping "+cdir)
+                continue
+            model = model.from_pretrained(os.path.join(args.model_dir,c)).to(args.device)
+            dataloader = DataLoader(dataset, batch_size=args.batch_size)
+            iterator = tqdm(dataloader, desc="Iteration",)
+            for step,batch in enumerate(iterator):
+                batch = tuple(t.to(args.device) for t in batch)
+                batch = {"input_ids": batch[0],"attention_mask": batch[1],}
+                with torch.no_grad():
+                    output = model(**batch)
+                    idx = torch.argmax(output.logits,axis=2)
+                    tokens = torch.where(idx*batch['attention_mask'] != 0,batch['input_ids'],-1)
+                torch.save(tokens,os.path.join(args.output_dir,c,args.extract_file_name)) 
+ 
     def evaluate(self,inputs,model,args):
         model = model.from_pretrained(args.pretrain_model).to(args.device)
         dataset_inputs = torch.load(args.dataset_tokens_path)

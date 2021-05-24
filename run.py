@@ -4,11 +4,14 @@ import sys
 from utils.objdict import ObjDict
 
 job_keywords = [
-        "create_data",
-        "load_data",
+        "create_train_data",
+        "load_train_data",
+        "create_test_data",
+        "load_test_data",
         "train",
         "predict",
         "evaluate",
+        "extract",
         ]
 
 def parse_arguments():
@@ -28,11 +31,17 @@ if __name__ == "__main__":
 
     assert all([j in job_keywords for j in jobs])
     
-    if "create_data" in jobs:
+    if "create_train_data" in jobs:
         inputs = pipeline.create_preprocess_train_data(cfg.preprocess_cfg)
     
-    if "load_data" in jobs:
+    if "load_train_data" in jobs:
         inputs = pipeline.load_preprocess_train_data(cfg.preprocess_cfg)
+    
+    if "create_test_data" in jobs:
+        inputs = pipeline.create_preprocess_test_data(cfg.preprocess_cfg)
+    
+    if "load_test_data" in jobs:
+        inputs = pipeline.load_preprocess_test_data(cfg.preprocess_cfg)
     
     if "train" in jobs:
         pipeline.train(inputs,cfg.model,cfg.train_cfg)
@@ -42,3 +51,6 @@ if __name__ == "__main__":
     
     if "evaluate" in jobs:
         pipeline.evaluate(inputs,cfg.model,cfg.evaluate_cfg)
+
+    if "extract" in jobs:
+        pipeline.extract(inputs,cfg.model,cfg.extract_cfg)
