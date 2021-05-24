@@ -4,7 +4,7 @@ import torch
 
 from transformers import DistilBertTokenizerFast
 
-from model.conv1d import DistilBertConv1dForTokenClassification,DistilBertConv1dConfig
+from model.DistilBertConv1d import DistilBertConv1dForTokenClassification,DistilBertConv1dConfig
 from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
 
