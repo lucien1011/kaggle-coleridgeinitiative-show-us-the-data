@@ -59,18 +59,18 @@ def make_label(input_ids,dataset_ids,length,binary_label=True):
 class TokenMultiClassifierPipeline(Pipeline):
 
     @classmethod
-    def compute_metrics(cls,preds,labels,num_classes,islogit=False):
+    def compute_metrics(cls,preds,labels,num_classes,islogit=False,average='macro',):
         if islogit:
             probs = softmax(preds).flatten(0,1)
         else:
             probs = softmax(preds.logits).flatten(0,1)
         labels_flatten = labels.flatten(0,1)
         return {
-            "accuracy": accuracy(probs,labels_flatten,num_classes=num_classes,average='macro',),
+            "accuracy": accuracy(probs,labels_flatten,num_classes=num_classes,average=average,),
             #"auroc": auroc(probs,labels_flatten),
-            "f1": f1(probs,labels_flatten,num_classes=num_classes,average='macro',),
-            "precision": precision(probs,labels_flatten,num_classes=num_classes,average='macro',),
-            "recall": recall(probs,labels_flatten,num_classes=num_classes,average='macro',),
+            "f1": f1(probs,labels_flatten,num_classes=num_classes,average=average,),
+            "precision": precision(probs,labels_flatten,num_classes=num_classes,average=average,),
+            "recall": recall(probs,labels_flatten,num_classes=num_classes,average=average,),
             #"specificity": specificity(probs,labels,num_classes=num_classes),
         }
 
