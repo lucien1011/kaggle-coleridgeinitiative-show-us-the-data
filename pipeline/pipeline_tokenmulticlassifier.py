@@ -131,6 +131,14 @@ class TokenMultiClassifierPipeline(Pipeline):
         tokenizer = args.tokenizer
         df = pd.read_csv(args.train_csv_path)
 
+        out_input_ids_path = os.path.join(args.preprocess_train_dir,args.input_ids_name)
+        out_attentation_mask_path = os.path.join(args.preprocess_train_dir,args.attentation_mask_name)
+        out_overflow_to_sample_mapping_path = os.path.join(args.preprocess_train_dir,args.overflow_to_sample_mapping_name)
+        out_labels_path = os.path.join(args.preprocess_train_dir,args.labels_name)
+        
+        out_file_paths = [out_input_ids_path,out_attention_mask_path,out_overflow_to_sample_mapping_path,out_labels_path]
+        assert all([not os.path.exists(o) for o in out_file_paths])
+
         self.print_header()
         self.start_count_time("Tokenize")
         print("Tokenize text ")
@@ -161,10 +169,10 @@ class TokenMultiClassifierPipeline(Pipeline):
         self.print_header()
         if args.preprocess_train_dir:
             mkdir_p(args.preprocess_train_dir)
-            torch.save(tokenized_inputs['input_ids'],os.path.join(args.preprocess_train_dir,args.input_ids_name))
-            torch.save(tokenized_inputs['attention_mask'],os.path.join(args.preprocess_train_dir,args.attention_mask_name))
-            torch.save(tokenized_inputs['overflow_to_sample_mapping'],os.path.join(args.preprocess_train_dir,args.overflow_to_sample_mapping_name))
-            torch.save(tokenized_inputs['labels'],os.path.join(args.preprocess_train_dir,args.labels_name))
+            torch.save(tokenized_inputs['input_ids'],out_input_ids_path)
+            torch.save(tokenized_inputs['attention_mask'],out_attention_mask_path)
+            torch.save(tokenized_inputs['overflow_to_sample_mapping'],out_overflow_to_sample_mapping_path)
+            torch.save(tokenized_inputs['labels'],out_labels_path)
         
         dataset = TensorDataset(tokenized_inputs['input_ids'],tokenized_inputs['attention_mask'],tokenized_inputs['labels'])
         train_size = int(args.train_size * len(dataset))
