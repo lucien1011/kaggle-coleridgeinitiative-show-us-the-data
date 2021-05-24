@@ -6,7 +6,7 @@ from utils.objdict import ObjDict
 job_keywords = [
         "create_data",
         "load_data",
-        "train_data",
+        "train",
         "predict",
         "evaluate",
         ]
