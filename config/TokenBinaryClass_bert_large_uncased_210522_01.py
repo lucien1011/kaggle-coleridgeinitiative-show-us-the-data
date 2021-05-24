@@ -77,6 +77,17 @@ predict_cfg = ObjDict(
         )
 
 # __________________________________________________________________ ||
+extract_cfg = ObjDict(
+        model_dir = os.path.join('log',name,),
+        model_key = 'checkpoint-epoch-',
+        device = "cuda",
+        batch_size = 256,
+        output_dir = os.path.join(t2_dir,name,"extract/"),
+        extract_file_name = "pred_ids.pt",
+        dataset_name = "test_dataset",
+        )
+
+# __________________________________________________________________ ||
 evaluate_cfg = ObjDict(
         pretrain_model = os.path.join("log",name,"checkpoint-8000"),
         device = 'cuda',
@@ -84,16 +95,6 @@ evaluate_cfg = ObjDict(
         test = True,
         print_per_step = 1,
         dataset_tokens_path = "data/optimise_TokenMultiClass_distilbert_base_uncased_210517/train/dataset_tokens.pt",
-        )
-
-# __________________________________________________________________ ||
-extract_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-epoch-3"),
-        device = 'cuda',
-        test = True,
-        write_predicted_only = True,
-        write_per_step = 1,
-        extract_text_path = os.path.join('log',name,'checkpoint-epoch-3.txt'),
         )
 
 # __________________________________________________________________ ||

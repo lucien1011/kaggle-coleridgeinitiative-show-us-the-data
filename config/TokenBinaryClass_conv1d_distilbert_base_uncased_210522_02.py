@@ -98,16 +98,6 @@ evaluate_cfg = ObjDict(
         )
 
 # __________________________________________________________________ ||
-extract_cfg = ObjDict(
-        pretrain_model = os.path.join("log",name,"checkpoint-epoch-2"),
-        device = 'cuda',
-        test = True,
-        write_predicted_only = True,
-        write_per_step = 1,
-        extract_text_path = os.path.join('log',name,'checkpoint-epoch-2.txt'),
-        )
-
-# __________________________________________________________________ ||
 slurm_job_dir = os.path.join('log/',name+'/')
 slurm_cfg = ObjDict(
     name = name,
