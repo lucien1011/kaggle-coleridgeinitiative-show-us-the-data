@@ -3,10 +3,11 @@ import argparse
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('cfg_path')
+    parser.add_argument('jobs')
     parser.add_argument('--slurm_cfg_name',default='slurm_cfg',)
     return parser.parse_args()
 
-def submit(cfg_path,cfg_name='slurm_cfg',):
+def submit(cfg_path,jobs,cfg_name='slurm_cfg',):
     import os,pickle
     
     from utils.objdict import ObjDict
@@ -25,7 +26,7 @@ python3 {pyscript} {cfg_path} {mode}
 """.format(
             pyscript="run.py",
             cfg_path="config/"+cfg.name+".py",
-            mode=sys.argv[2],
+            mode=jobs,
             base_path=os.environ['BASE_PATH'],
             )
     worker.make_sbatch_script(
@@ -44,4 +45,4 @@ python3 {pyscript} {cfg_path} {mode}
 if __name__ == "__main__":
     
     args = parse_arguments()
-    submit(args.cfg_path,args.slurm_cfg_name)
+    submit(args.cfg_path,args.jobs,args.slurm_cfg_name)
