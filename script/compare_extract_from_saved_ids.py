@@ -15,8 +15,8 @@ from utils.mkdir_p import mkdir_p
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i','--input_path',type=str)
-    parser.add_argument('-o','--output_dir',type=str)
+    parser.add_argument('input_path',type=str)
+    parser.add_argument('output_dir',type=str)
     return parser.parse_args()
 
 def compute_extract_attribute(pred_ids):

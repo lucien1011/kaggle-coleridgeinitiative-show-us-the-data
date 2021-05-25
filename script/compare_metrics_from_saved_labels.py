@@ -15,8 +15,8 @@ from utils.mkdir_p import mkdir_p
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i','--input_path',type=str)
-    parser.add_argument('-o','--output_dir',type=str)
+    parser.add_argument('input_path',type=str)
+    parser.add_argument('output_dir',type=str)
     parser.add_argument('-d','--dataset_name',type=str,default="val_dataset.pt",)
     parser.add_argument('--ymin',type=float,default=0.,)
     parser.add_argument('--ymax',type=float,default=1.,)
@@ -25,6 +25,7 @@ def parse_arguments():
 def compute_metric_dict(cfg,device='cuda',dataset_name="val_dataset.pt"):
 
     pp = cfg.pipeline
+    print("Processing: "+cfg.name)
     print("Use dataset: "+dataset_name)
     
     val_dataset_path = os.path.join(cfg.preprocess_cfg.preprocess_train_dir,dataset_name)
