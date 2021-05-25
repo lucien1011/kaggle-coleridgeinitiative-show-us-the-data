@@ -10,7 +10,7 @@ from utils.objdict import ObjDict
 # __________________________________________________________________ ||
 name = "TokenBinaryClass_distilroberta_base_210522_01"
 base_pretrained = "distilroberta-base"
-plot_label = "distilroberta-base-linear"
+plot_label = "distilroberta-base-linear-lr2e-5"
 
 t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/data/"
 preprocess_train_dir = os.path.join(t2_dir,name,"train/")
