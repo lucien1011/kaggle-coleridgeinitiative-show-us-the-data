@@ -206,6 +206,7 @@ class TokenMultiClassifierPipeline(Pipeline):
             torch.save(tokenized_inputs['id'],os.path.join(args.preprocess_test_dir,"id.pt"))
             torch.save(tokenized_inputs['input_ids'],os.path.join(args.preprocess_test_dir,"input_ids.pt"))
             torch.save(tokenized_inputs['attention_mask'],os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
+            torch.save(tokenized_inputs['overflow_to_sample_mapping'],os.path.join(args.preprocess_test_dir,"overflow_to_sample_mapping.pt"))
 
         return tokenized_inputs
     
@@ -221,12 +222,14 @@ class TokenMultiClassifierPipeline(Pipeline):
         #ids = torch.load(os.path.join(args.preprocess_test_dir,"id.pt"))
         input_ids = torch.load(os.path.join(args.preprocess_test_dir,"input_ids.pt"))
         attention_mask = torch.load(os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
+        overflow_to_sample_mapping = torch.load(os.path.join(args.preprocess_test_dir,"overflow_to_sample_mapping.pt"))
 
-        dataset = TensorDataset(input_ids,attention_mask)
+        dataset = TensorDataset(input_ids,attention_mask,overflow_to_sample_mapping)
         inputs = ObjDict(
                 test_dataset = dataset,
                 input_ids = input_ids,
                 attention_mask = attention_mask,
+                overflow_to_sample_mapping = overflow_to_sample_mapping,
                 )
         return inputs
 
@@ -246,10 +249,12 @@ class TokenMultiClassifierPipeline(Pipeline):
             iterator = tqdm(dataloader, desc="Iteration",)
             for step,batch in enumerate(iterator):
                 batch = tuple(t.to(args.device) for t in batch)
+                overflow_mapping = batch[2]
                 batch = {"input_ids": batch[0],"attention_mask": batch[1],}
                 with torch.no_grad():
                     preds = model(**batch)
                 torch.save(preds,os.path.join(args.output_dir,c,args.pred_name+"_"+str(step)+args.pred_extension)) 
+                torch.save(overflow_mapping,os.path.join(args.output_dir,c,"overflow_mapping_"+str(step)+args.pred_extension)) 
 
     def extract(self,inputs,model,args):
         checkpts = self.get_model_checkpts(args.model_dir,args.model_key)
@@ -267,6 +272,7 @@ class TokenMultiClassifierPipeline(Pipeline):
             iterator = tqdm(dataloader, desc="Iteration",)
             for step,batch in enumerate(iterator):
                 batch = tuple(t.to(args.device) for t in batch)
+                overflow_mapping = batch[2]
                 batch = {"input_ids": batch[0],"attention_mask": batch[1],}
                 with torch.no_grad():
                     output = model(**batch)
@@ -274,6 +280,7 @@ class TokenMultiClassifierPipeline(Pipeline):
                     tokens = torch.where(idx*batch['attention_mask'] != 0,batch['input_ids'],-1)
                 extract_file_name,extract_file_extension = os.path.splitext(args.extract_file_name)
                 torch.save(tokens,os.path.join(args.output_dir,c,extract_file_name+"_"+str(step)+extract_file_extension)) 
+                torch.save(overflow_mapping,os.path.join(args.output_dir,c,"overflow_mapping_"+str(step)+extract_file_extension)) 
  
     def evaluate(self,inputs,model,args):
         model = model.from_pretrained(args.pretrain_model).to(args.device)
