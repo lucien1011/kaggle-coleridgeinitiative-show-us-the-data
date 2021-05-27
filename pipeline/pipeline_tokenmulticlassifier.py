@@ -238,7 +238,7 @@ class TokenMultiClassifierPipeline(Pipeline):
             self.print_message("Processing checkpoint "+c) 
             cdir = os.path.join(args.output_dir,c)
             mkdir_p(cdir)
-            if len(glob.glob(cdir+"*.pt")) > 0: 
+            if len(glob.glob(os.path.join(cdir,"*.pt"))) > 0: 
                 self.print_message("Skipping "+cdir)
                 continue
             model = model.from_pretrained(os.path.join(args.model_dir,c)).to(args.device)
@@ -246,7 +246,7 @@ class TokenMultiClassifierPipeline(Pipeline):
             iterator = tqdm(dataloader, desc="Iteration",)
             for step,batch in enumerate(iterator):
                 batch = tuple(t.to(args.device) for t in batch)
-                batch = {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
+                batch = {"input_ids": batch[0],"attention_mask": batch[1],}
                 with torch.no_grad():
                     preds = model(**batch)
                 torch.save(preds,os.path.join(args.output_dir,c,args.pred_name+"_"+str(step)+args.pred_extension)) 
@@ -259,7 +259,7 @@ class TokenMultiClassifierPipeline(Pipeline):
             self.print_message("Processing checkpoint "+c) 
             cdir = os.path.join(args.output_dir,c)
             mkdir_p(cdir)
-            if len(glob.glob(cdir+"*.pt")) > 0: 
+            if len(glob.glob(os.path.join(cdir,"*.pt"))) > 0: 
                 self.print_message("Skipping "+cdir)
                 continue
             model = model.from_pretrained(os.path.join(args.model_dir,c)).to(args.device)
@@ -272,7 +272,8 @@ class TokenMultiClassifierPipeline(Pipeline):
                     output = model(**batch)
                     idx = torch.argmax(output.logits,axis=2)
                     tokens = torch.where(idx*batch['attention_mask'] != 0,batch['input_ids'],-1)
-                torch.save(tokens,os.path.join(args.output_dir,c,args.extract_file_name)) 
+                extract_file_name,extract_file_extension = os.path.splitext(args.extract_file_name)
+                torch.save(tokens,os.path.join(args.output_dir,c,extract_file_name+"_"+str(step)+extract_file_extension)) 
  
     def evaluate(self,inputs,model,args):
         model = model.from_pretrained(args.pretrain_model).to(args.device)

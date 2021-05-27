@@ -12,9 +12,10 @@ next_line = '\n'
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('input_path',type=str)
+    parser.add_argument('--write_dataset_only',action='store_true')
     return parser.parse_args()
 
-def convert_ids_to_string(cfg,device='cuda',out_str='pred_str.txt'):
+def convert_ids_to_string(cfg,device='cuda',out_str='pred_str.txt',write_dataset_only=False):
     pp = cfg.pipeline
     out_dict = {}
     checkpts = pp.get_model_checkpts(cfg.extract_cfg.model_dir,cfg.extract_cfg.model_key)
@@ -30,8 +31,13 @@ def convert_ids_to_string(cfg,device='cuda',out_str='pred_str.txt'):
             print(cdir+" not exist")
             continue
         fs = [f for f in os.listdir(cdir) if ".pt" in f]
+        if not fs:
+            print("empty folder: {}, skipping".format(c))
+            continue
         pred_ids = torch.cat([torch.load(os.path.join(cdir,f)) for f in fs])
         pred_ids[pred_ids==-1] = 0
+        if write_dataset_only:
+            pred_ids = pred_ids[torch.sum(pred_ids,axis=1)!=0]
         pp.print_message(c)
 
         strs = cfg.tokenizer.batch_decode(pred_ids,skip_special_tokens=True)
@@ -55,4 +61,4 @@ if __name__ == "__main__":
     
     data = {}
     for c in cfgs:
-        convert_ids_to_string(c)        
+        convert_ids_to_string(c,write_dataset_only=args.write_dataset_only)        
