@@ -25,7 +25,7 @@ source setup_hpg.sh
 python3 {pyscript} {cfg_path} {mode}
 """.format(
             pyscript="run.py",
-            cfg_path="config/"+cfg.name+".py",
+            cfg_path=cfg_path,
             mode=jobs,
             base_path=os.environ['BASE_PATH'],
             )
