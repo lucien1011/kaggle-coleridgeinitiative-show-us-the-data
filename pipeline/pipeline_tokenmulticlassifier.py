@@ -233,6 +233,14 @@ class TokenMultiClassifierPipeline(Pipeline):
                 )
         return inputs
 
+    def randomize_train_data(self,inputs,cfg):
+        assert cfg.randomize_cfg.fraction > 0. and cfg.randomize_cfg.fraction < 1.
+        train_dataset = inputs.train_dataset.dataset[inputs.train_dataset.indices]
+        mask = torch.rand(train_dataset[0].shape) < cfg.randomize_cfg.fraction
+        pos_label = train_dataset[2].bool()
+        train_dataset[0][pos_label*mask] = torch.randint(3,cfg.tokenizer.vocab_size,(torch.sum(mask*pos_label),))
+        inputs.train_dataset = TensorDataset(*train_dataset)
+
     def predict(self,inputs,model,args):
         checkpts = self.get_model_checkpts(args.model_dir,args.model_key)
         mkdir_p(args.output_dir) 
