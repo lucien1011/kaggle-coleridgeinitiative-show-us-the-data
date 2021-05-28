@@ -4,13 +4,13 @@ import torch
 
 from transformers import BertTokenizerFast
 
-from model.BertConv1d import BertConv1dForTokenClassification,BertConv1dConfig
+from transformers import BertForTokenClassification,BertTokenizerFast,BertConfig,BertModel
 from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
 base_dir = "rcdataset_210526"
-name = "TokenBinaryClass_conv1d_bert_base_uncased_210522_01"
+name = "TokenBinaryClass_bert_base_uncased_210522_01"
 base_pretrained = "bert-base-uncased"
 plot_label = "bert-base-uncased-conv1d-4layer"
 
@@ -24,19 +24,7 @@ nlabel = len(label_list)
 # __________________________________________________________________ ||
 pipeline = TokenMultiClassifierPipeline()
 
-config = BertConv1dConfig(
-        num_labels = nlabel,
-        conv_setting = [
-            {"in_channels":768, "out_channels":512, "kernel_size":15,},
-            {"in_channels":512, "out_channels":256, "kernel_size":15,},
-            {"in_channels":256, "out_channels":128, "kernel_size":15,},
-            {"in_channels":128, "out_channels":nlabel, "kernel_size":15,},
-            ],
-        )
-model = BertConv1dForTokenClassification.from_pretrained(
-    'model/'+base_pretrained,
-    config=config,
-    )
+model = BertForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list))
 
 tokenizer = BertTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
 

@@ -2,21 +2,19 @@ import os
 import numpy as np
 import torch
 
-from transformers import BertTokenizerFast
-
-from model.BertConv1d import BertConv1dForTokenClassification,BertConv1dConfig
+from transformers import RobertaForTokenClassification,RobertaTokenizerFast
 from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
 base_dir = "rcdataset_210526"
-name = "TokenBinaryClass_conv1d_bert_base_uncased_210522_01"
-base_pretrained = "bert-base-uncased"
-plot_label = "bert-base-uncased-conv1d-4layer"
+name = "TokenBinaryClass_roberta_base_210522_01"
+base_pretrained = "roberta-base"
+plot_label = "roberta-base-linear-lr2e-5"
 
 t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/data/"
-preprocess_train_dir = os.path.join(t2_dir,"TokenBinaryClass_bert_base_uncased_210522_01","train/")
-preprocess_test_dir = os.path.join(t2_dir,base_dir,"TokenBinaryClass_bert_base_uncased_210522_01","test/")
+preprocess_train_dir = os.path.join(t2_dir,"TokenBinaryClass_roberta_base_210522_01","train/")
+preprocess_test_dir = os.path.join(t2_dir,base_dir,"TokenBinaryClass_roberta_base_210522_01","test/")
 
 label_list = range(2)
 nlabel = len(label_list)
@@ -24,23 +22,9 @@ nlabel = len(label_list)
 # __________________________________________________________________ ||
 pipeline = TokenMultiClassifierPipeline()
 
-config = BertConv1dConfig(
-        num_labels = nlabel,
-        conv_setting = [
-            {"in_channels":768, "out_channels":512, "kernel_size":15,},
-            {"in_channels":512, "out_channels":256, "kernel_size":15,},
-            {"in_channels":256, "out_channels":128, "kernel_size":15,},
-            {"in_channels":128, "out_channels":nlabel, "kernel_size":15,},
-            ],
-        )
-model = BertConv1dForTokenClassification.from_pretrained(
-    'model/'+base_pretrained,
-    config=config,
-    )
+model = RobertaForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list))
 
-tokenizer = BertTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
-
-# __________________________________________________________________ ||
+tokenizer = RobertaTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)# __________________________________________________________________ ||
 preprocess_cfg = ObjDict(
         train_csv_path = "data/train_sequence_has_dataset.csv",
         train_size = 0.8,
@@ -95,7 +79,7 @@ extract_cfg = ObjDict(
         model_dir = os.path.join('log',name,),
         model_key = 'checkpoint-epoch-',
         device = "cuda",
-        batch_size = 512,
+        batch_size = 256,
         output_dir = os.path.join(t2_dir,base_dir,name,"extract/"),
         extract_file_name = "pred_ids.pt",
         dataset_name = "test_dataset",
@@ -131,5 +115,5 @@ python3 {pyscript} {cfg_path}
     memory = '32gb',
     email = 'kin.ho.lo@cern.ch',
     time = '72:00:00',
-    gpu = 'geforce:1',
+    gpu = 'quadro',
     )
