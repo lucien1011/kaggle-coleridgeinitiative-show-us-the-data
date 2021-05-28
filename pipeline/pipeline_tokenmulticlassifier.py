@@ -234,6 +234,7 @@ class TokenMultiClassifierPipeline(Pipeline):
         return inputs
 
     def randomize_train_data(self,inputs,cfg):
+        self.print_message("[randomize_train_data]")
         assert cfg.randomize_cfg.fraction > 0. and cfg.randomize_cfg.fraction < 1.
         train_dataset = inputs.train_dataset.dataset[inputs.train_dataset.indices]
         mask = torch.rand(train_dataset[0].shape) < cfg.randomize_cfg.fraction
