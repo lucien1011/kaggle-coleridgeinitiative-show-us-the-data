@@ -15,7 +15,7 @@ plot_label = "bert-base-uncased-linear"
 
 t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/data/"
 preprocess_train_dir = os.path.join(t2_dir,"TokenBinaryClass_bert_base_uncased_210522_01","train/")
-preprocess_test_dir = os.path.join(t2_dir,"TokenBinaryClass_bert_base_uncased_210522_01","test/")
+preprocess_test_dir = os.path.join(t2_dir,"rcdataset_210526","TokenBinaryClass_bert_base_uncased_210522_01","test/")
 
 label_list = range(2)
 nlabel = len(label_list)
@@ -35,7 +35,7 @@ preprocess_cfg = ObjDict(
         tokenizer = tokenizer,
         preprocess_train_dir = preprocess_train_dir,
         load_preprocess = True,
-        test_csv_path = 'data/test_sequence.csv',
+        test_csv_path = 'storage/input/rcdataset/df_rcdataset.csv',
         preprocess_test_dir = preprocess_test_dir,
         input_ids_name = "input_ids.pt",
         attention_mask_name = "attention_mask.pt",
@@ -84,7 +84,7 @@ predict_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 extract_cfg = ObjDict(
-        model_dir = os.path.join('log',name,),
+        model_dir = os.path.join('log',base_dir,name,),
         model_key = 'checkpoint-epoch-',
         device = "cuda",
         batch_size = 256,
@@ -104,7 +104,7 @@ evaluate_cfg = ObjDict(
         )
 
 # __________________________________________________________________ ||
-slurm_job_dir = os.path.join('log/',base_dir,name)
+slurm_job_dir = os.path.join('log/',base_dir,name+"/")
 slurm_cfg = ObjDict(
     name = name,
     slurm_cfg_name = 'submit.cfg',

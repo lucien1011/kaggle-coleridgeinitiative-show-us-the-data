@@ -84,7 +84,7 @@ predict_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 extract_cfg = ObjDict(
-        model_dir = os.path.join('log',name,),
+        model_dir = os.path.join('log',base_dir,name,),
         model_key = 'checkpoint-epoch-',
         device = "cuda",
         batch_size = 256,
