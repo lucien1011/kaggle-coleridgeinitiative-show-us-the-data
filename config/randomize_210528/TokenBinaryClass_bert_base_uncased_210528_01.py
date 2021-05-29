@@ -11,7 +11,7 @@ from utils.objdict import ObjDict
 base_dir = "randomize_210528"
 name = "TokenBinaryClass_bert_base_uncased_210528_01"
 base_pretrained = "bert-base-uncased"
-plot_label = "bert-base-uncased-linear"
+plot_label = "bert-base-uncased-linear_rand-frac-0.5"
 
 t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/data/"
 preprocess_train_dir = os.path.join(t2_dir,"TokenBinaryClass_bert_base_uncased_210522_01","train/")

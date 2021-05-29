@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from utils.objdict import ObjDict
 from utils.mkdir_p import mkdir_p
 
+fkey = "pred_ids"
+
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('input_path',type=str)
@@ -21,23 +23,27 @@ def parse_arguments():
 
 def compute_extract_attribute(pred_ids):
     npred_token = torch.sum(pred_ids!=-1,axis=1)
+    nbatch = len(pred_ids)
     return {
         "number_pred_token": torch.sum(npred_token),
-        "number_text_with_dataset": torch.sum(npred_token!=0),
+        "number_text_with_dataset": torch.sum(npred_token!=0) / nbatch,
     }
 
-def compute_extract_dict(cfg,device='cuda'):
+def compute_text_metric_dict(cfg,device='cuda'):
 
-    pp = cfg.pipeline
-     
+    pp = cfg.pipeline 
     out_dict = {}
     checkpts = pp.get_model_checkpts(cfg.extract_cfg.model_dir,cfg.extract_cfg.model_key)
+    textids = pd.read_csv(cfg.preprocess_cfg.test_csv_path).id
     for c in checkpts:
         cdir = os.path.join(cfg.extract_cfg.output_dir,c)
         if not os.path.exists(cdir):
             print(cdir+" not exist")
             continue
-        fs = [f for f in os.listdir(cdir) if ".pt" in f]
+        fs = [f for f in os.listdir(cdir) if ".pt" in f and fkey in f]
+        if not fs:
+            print(cdir+" is empty, skipping")
+            continue
         #fs.sort(key=lambda x: int(x.replace(".pt","").split("_")[-1]))
         pred_ids = torch.cat([torch.load(os.path.join(cdir,f)) for f in fs])
         pp.print_message(c)
@@ -68,7 +74,7 @@ if __name__ == "__main__":
     
     data = {}
     for c in cfgs:
-        out_dict = compute_extract_dict(c)
+        out_dict = compute_text_metric_dict(c)
         if out_dict:
             data[c] = out_dict
     cfgs = list(data.keys())

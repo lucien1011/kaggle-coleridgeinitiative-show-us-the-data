@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from utils.objdict import ObjDict
 from utils.mkdir_p import mkdir_p
 
+fkey = "labels"
+
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('input_path',type=str)
@@ -43,7 +45,7 @@ def compute_metric_dict(cfg,device='cuda',dataset_name="val_dataset.pt"):
         if not os.path.exists(cdir):
             print(cdir+" not exist")
             continue
-        fs = [f for f in os.listdir(cdir) if ".pt" in f]
+        fs = [f for f in os.listdir(cdir) if ".pt" in f and fkey in f]
         fs.sort(key=lambda x: int(x.replace(".pt","").split("_")[-1]))
         preds = torch.cat([torch.load(os.path.join(cdir,f)).logits for f in fs])
         metrics = pp.compute_metrics(preds,batch['labels'],cfg.nlabel,islogit=True)
@@ -71,7 +73,7 @@ if __name__ == "__main__":
     assert len(paths) > 0
     
     cfgs = [ObjDict.read_all_from_file_python3(p) for p in paths]
-    assert all([hasattr(c,"plot_label",) for c in cfgs])
+    assert all([hasattr(c,"plot_label") for c in cfgs])
     
     data = {}
     for c in cfgs:
