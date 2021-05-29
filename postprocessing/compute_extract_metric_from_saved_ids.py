@@ -41,7 +41,8 @@ def compute_extract_dict(cfg,device='cuda'):
         if not fs:
             print(cdir+" is empty, skipping")
             continue
-        pp.print_message("Compute predicted text dictionary for "+c)
+        print("Compute predicted text dictionary for "+c)
+        c_int = int(c.replace(cfg.extract_cfg.model_key,""))
         pred_ids = torch.cat([torch.load(os.path.join(cdir,f)) for f in fs if fkey in f])
         op_indices = torch.cat([torch.load(os.path.join(cdir,f)) for f in fs if of_mapping_key in f])
         pred_ids[pred_ids==-1] = 0
@@ -49,7 +50,6 @@ def compute_extract_dict(cfg,device='cuda'):
 
         for i in range(len(strs)):
             textid = str(textids[int(op_indices[i])])
-            c_int = int(c.replace(cfg.extract_cfg.model_key,""))
             if c_int not in out_dict:
                 out_dict[c_int] = defaultdict(str)
             out_dict[c_int][textid] += strs[i]
@@ -57,7 +57,7 @@ def compute_extract_dict(cfg,device='cuda'):
     
     return out_dict
 
-def compute_coverage_from_dict(pred_text):
+def compute_article_coverage_from_dict(pred_text):
 
     out_dict = {cname:dict() for cname in pred_text}
     for cname,checkptd in pred_text.items():
@@ -65,6 +65,22 @@ def compute_coverage_from_dict(pred_text):
             out_dict[cname][c_int] = sum([bool(ts) for ts in textd.values()]) / len(textd)
 
     return out_dict
+
+def compute_dataset_overlap_from_dict(pred_text,dataset_tokens):
+
+    out_dict = {cname:dict() for cname in pred_text}
+    for cname,checkptd in pred_text.items():
+        for c_int,textd in checkptd.items():
+            out_dict[cname][c_int] = sum([len([t for t in ts if t in dataset_tokens])/len(ts) for ts in textd.values() if ts]) / len([1 for ts in textd.values() if ts])
+
+    return out_dict
+
+def get_dataset_tokens(cfg):
+    df = pd.read_csv(cfg.preprocess_cfg.train_csv_path)
+    datasets = []
+    for d in df.dataset.unique():
+        datasets.extend(cfg.tokenizer.tokenize(d))
+    return set(datasets)
 
 def draw_figure(output_dir,name,input_dict):
     mkdir_p(output_dir)
@@ -99,14 +115,19 @@ if __name__ == "__main__":
     
     data = {}
     for c in cfgs:
+        print("*"*100)
+        print("Processing "+c.name)
+        print("*"*100)
         out_dict = compute_extract_dict(c)
         if out_dict:
             data[c] = out_dict
     cfgs = list(data.keys())
 
     assert len(data) > 0
-    #assert all([list(data[c].keys()) == list(data[cfgs[0]].keys()) for c in cfgs[1:]])
 
-    article_coverage_dict = compute_coverage_from_dict(data)
+    article_coverage_dict = compute_article_coverage_from_dict(data)
     draw_figure(args.output_dir,"article_coverage",article_coverage_dict)
-    #pickle.dump(data,open(os.path.join(args.output_dir,"p.pkl"),"wb"))
+    
+    dataset_tokens = get_dataset_tokens(cfgs[0])
+    dataset_overlap_dict = compute_dataset_overlap_from_dict(data,dataset_tokens)
+    draw_figure(args.output_dir,"dataset_overlap",dataset_overlap_dict)
