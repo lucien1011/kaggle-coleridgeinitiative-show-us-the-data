@@ -35,7 +35,6 @@ def make_label(input_ids,dataset_ids,length,binary_label=True):
             start_index += 1 
         else:
             found_indices.append(start_index)
-            found = True
             start_index += dataset_length
 
     output = [0 for _ in range(length)]
@@ -55,6 +54,49 @@ def make_label(input_ids,dataset_ids,length,binary_label=True):
                         output[start_index+i] = 2
 
     return output
+
+def make_labels(input_ids,dataset_ids,binary_label=True):
+    start_index = 1
+    max_dataset_length = max([len(d) for d in dataset_ids])
+    dataset_length = {i:len(d) for i,d in enumerate(dataset_ids)}
+    ndataset = len(dataset_ids)
+    seq_length = len(input_ids)
+    found_indices = []
+
+    while start_index + max_dataset_length < seq_length:
+        found = True
+        max_length = -1
+        for i in range(ndataset):
+            if all([input_ids[start_index+j] == dataset_ids[i][j] for j in range(dataset_length[i])]):
+                if dataset_length[i] > max_length:
+                    max_length = dataset_length[i]
+            else:
+                found = False
+                break
+        if not found:
+            start_index += 1 
+        else:
+            found_indices.append(start_index)
+            start_index += max_length
+
+    output = [0 for _ in range(length)]
+    if found_indices:
+        if binary_label:
+            for start_index in found_indices:
+                for i in range(dataset_length):
+                    output[start_index+i] = 1
+        else:
+            for start_index in found_indices:
+                for i in range(dataset_length):
+                    if i == 0:
+                        output[start_index+i] = 1
+                    elif i == dataset_length - 1:
+                        output[start_index+i] = 3
+                    else:
+                        output[start_index+i] = 2
+
+    return output
+
 
 class TokenMultiClassifierPipeline(Pipeline):
 
@@ -160,8 +202,15 @@ class TokenMultiClassifierPipeline(Pipeline):
         labels = []
         ntext = len(tokenized_inputs['overflow_to_sample_mapping'])
         for i in tqdm(range(ntext)):
-            tokenized_dataset = tokenizer(df['dataset'][int(tokenized_inputs['overflow_to_sample_mapping'][i])])
-            labels.append(make_label(tokenized_inputs.input_ids[i],tokenized_dataset['input_ids'][1:-1],len(tokenized_inputs.attention_mask[i]),))
+            datasets = df['dataset'][int(tokenized_inputs['overflow_to_sample_mapping'][i])]
+            multidataset = "|" in datasets
+            if multidataset:
+                datasets = datasets.split("|")
+            tokenized_dataset = tokenizer(datasets)
+            if multidataset:
+                labels.append(make_labels(tokenized_inputs.input_ids[i],[ts[1:-1] for ts in tokenized_dataset['input_ids']],len(tokenized_inputs.attention_mask[i]),))
+            else:
+                labels.append(make_label(tokenized_inputs.input_ids[i],tokenized_dataset['input_ids'][1:-1],len(tokenized_inputs.attention_mask[i]),))
         tokenized_inputs['labels'] = torch.tensor(labels)
 
         self.print_header()
@@ -191,6 +240,10 @@ class TokenMultiClassifierPipeline(Pipeline):
     def create_preprocess_test_data(self,args):
         tokenizer = args.tokenizer
         df = pd.read_csv(args.test_csv_path)
+        self.print_header()
+        self.start_count_time("Tokenize")
+        print("Tokenize text ")
+        print("Dataframe shape: ",df.shape)
         tokenized_inputs = tokenizer(
                 df['text'].tolist(),
                 padding='max_length',
@@ -200,6 +253,22 @@ class TokenMultiClassifierPipeline(Pipeline):
                 return_tensors="pt"
                 )
         tokenized_inputs['id'] = df['id'].tolist()
+        self.print_elapsed_time("Tokenize")
+        self.print_header()
+
+        if 'dataset' in df:
+            print("Make labels")
+            self.print_header()
+            labels = []
+            ntext = len(tokenized_inputs['overflow_to_sample_mapping'])
+            for i in tqdm(range(ntext)):
+                tokenized_dataset = tokenizer(df['dataset'][int(tokenized_inputs['overflow_to_sample_mapping'][i])])
+                labels.append(make_label(tokenized_inputs.input_ids[i],tokenized_dataset['input_ids'][1:-1],len(tokenized_inputs.attention_mask[i]),))
+            tokenized_inputs['labels'] = torch.tensor(labels)
+
+            self.print_header()
+            print("Saving")
+            self.print_header()
 
         if args.preprocess_test_dir:
             mkdir_p(args.preprocess_test_dir)
@@ -207,6 +276,8 @@ class TokenMultiClassifierPipeline(Pipeline):
             torch.save(tokenized_inputs['input_ids'],os.path.join(args.preprocess_test_dir,"input_ids.pt"))
             torch.save(tokenized_inputs['attention_mask'],os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
             torch.save(tokenized_inputs['overflow_to_sample_mapping'],os.path.join(args.preprocess_test_dir,"overflow_to_sample_mapping.pt"))
+            if 'dataset' in df: 
+                torch.save(tokenized_inputs['labels'],os.path.join(args.preprocess_test_dir,"labels.pt"))
 
         return tokenized_inputs
     
@@ -223,6 +294,10 @@ class TokenMultiClassifierPipeline(Pipeline):
         input_ids = torch.load(os.path.join(args.preprocess_test_dir,"input_ids.pt"))
         attention_mask = torch.load(os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
         overflow_to_sample_mapping = torch.load(os.path.join(args.preprocess_test_dir,"overflow_to_sample_mapping.pt"))
+        if os.path.exists(os.path.join(args.preprocess_test_dir,"labels.pt")):
+            labels = torch.load(os.path.join(args.preprocess_test_dir,"labels.pt"))
+        else:
+            labels = None
 
         dataset = TensorDataset(input_ids,attention_mask,overflow_to_sample_mapping)
         inputs = ObjDict(
@@ -230,6 +305,7 @@ class TokenMultiClassifierPipeline(Pipeline):
                 input_ids = input_ids,
                 attention_mask = attention_mask,
                 overflow_to_sample_mapping = overflow_to_sample_mapping,
+                labels = labels,
                 )
         return inputs
 
