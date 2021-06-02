@@ -58,6 +58,10 @@ class Pipeline(object):
     def get_model_checkpts(cls,input_dir,key):
         return [c for c in os.listdir(input_dir) if key in c and os.path.isdir(os.path.join(input_dir,c))]
 
+    @classmethod
+    def patch_batch(cls,batch):
+        return {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
+
     def train(self,inputs,model,args):
         model.to(args.device)
         if not args.train_batch_size:
@@ -105,7 +109,7 @@ class Pipeline(object):
             for step, batch in enumerate(epoch_iterator):
                 model.train()
                 batch = tuple(t.to(args.device) for t in batch)
-                batch_train = {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
+                batch_train = self.patch_batch(batch)
 
                 outputs = model(**batch_train)
                 loss = outputs[0]
@@ -129,8 +133,8 @@ class Pipeline(object):
 
                     if args.logging_steps > 0 and global_step % args.logging_steps == 0:
                         batch_val = tuple(t.to(args.device) for t in iter(val_dataloader).next())
-                        batch_val = {"input_ids": batch_val[0],"attention_mask": batch_val[1],"labels": batch_val[2]}
-                        
+                        batch_val = self.patch_batch(batch_val)
+
                         with torch.no_grad():
                             preds_val = model(**batch_val)
                             val_loss = preds_val[0]
