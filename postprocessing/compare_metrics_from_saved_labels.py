@@ -19,20 +19,27 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('input_path',type=str)
     parser.add_argument('output_dir',type=str)
-    parser.add_argument('-d','--dataset_name',type=str,default="val_dataset.pt",)
+    parser.add_argument('-d','--dataset_name',type=str,default="train:val_dataset",)
     parser.add_argument('--ymin',type=float,default=0.,)
     parser.add_argument('--ymax',type=float,default=1.,)
     return parser.parse_args()
 
-def compute_metric_dict(cfg,device='cuda',dataset_name="val_dataset.pt"):
+def compute_metric_dict(cfg,device='cuda',dataset_name="train:val_dataset"):
 
     pp = cfg.pipeline
     print("Processing: "+cfg.name)
     print("Use dataset: "+dataset_name)
+
+    dataset_info = dataset_name.split(":")
+    assert len(dataset_info) == 2
+    mode,dataset_name = dataset_info
+    assert mode == "train" or mode == "test"
     
-    val_dataset_path = os.path.join(cfg.preprocess_cfg.preprocess_train_dir,dataset_name)
-    if not os.path.exists(val_dataset_path): return dict()
-    val_dataset = torch.load(val_dataset_path)
+    if mode == "train":
+        inputs = pp.load_preprocess_train_data(cfg.preprocess_cfg)
+    elif mode == "test":
+        inputs = pp.load_preprocess_test_data(cfg.preprocess_cfg)
+    val_dataset = getattr(inputs,dataset_name)
     
     iterator = DataLoader(val_dataset,batch_size=len(val_dataset))
     batch = tuple(t.to(device) for t in iter(iterator).next())
