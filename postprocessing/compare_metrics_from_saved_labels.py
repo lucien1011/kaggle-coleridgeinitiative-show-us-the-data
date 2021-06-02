@@ -22,9 +22,10 @@ def parse_arguments():
     parser.add_argument('-d','--dataset_name',type=str,default="train:val_dataset",)
     parser.add_argument('--ymin',type=float,default=0.,)
     parser.add_argument('--ymax',type=float,default=1.,)
+    parser.add_argument('--external_dataset',action='store_true',)
     return parser.parse_args()
 
-def compute_metric_dict(cfg,device='cuda',dataset_name="train:val_dataset"):
+def compute_metric_dict(cfg,device='cuda',dataset_name="train:val_dataset",external_dataset=False):
 
     pp = cfg.pipeline
     print("Processing: "+cfg.name)
@@ -43,7 +44,11 @@ def compute_metric_dict(cfg,device='cuda',dataset_name="train:val_dataset"):
     
     iterator = DataLoader(val_dataset,batch_size=len(val_dataset))
     batch = tuple(t.to(device) for t in iter(iterator).next())
-    batch = {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
+   
+    if external_dataset:
+        batch = {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
+    else:
+        batch = {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[-1]}
     
     out_dict = {}
     checkpts = pp.get_model_checkpts(cfg.predict_cfg.model_dir,cfg.predict_cfg.model_key)
@@ -84,7 +89,7 @@ if __name__ == "__main__":
     
     data = {}
     for c in cfgs:
-        out_dict = compute_metric_dict(c,dataset_name=dataset_name)
+        out_dict = compute_metric_dict(c,dataset_name=dataset_name,external_dataset=args.external_dataset)
         if out_dict:
             data[c] = out_dict
     cfgs = list(data.keys())
