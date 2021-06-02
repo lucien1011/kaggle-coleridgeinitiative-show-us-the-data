@@ -56,13 +56,18 @@ def make_label(input_ids,dataset_ids,length,binary_label=True):
     return output
 
 def make_labels(input_ids,dataset_ids,binary_label=True):
+    
+    seq_length = len(input_ids)
+    output = [0 for _ in range(seq_length)]
+    if not dataset_ids: return output
+
     start_index = 1
     max_dataset_length = max([len(d) for d in dataset_ids])
     dataset_length = {i:len(d) for i,d in enumerate(dataset_ids)}
     ndataset = len(dataset_ids)
-    seq_length = len(input_ids)
     found_indices = []
-
+    found_lengths = []
+    
     while start_index + max_dataset_length < seq_length:
         found = True
         max_length = -1
@@ -77,20 +82,20 @@ def make_labels(input_ids,dataset_ids,binary_label=True):
             start_index += 1 
         else:
             found_indices.append(start_index)
+            found_lengths.append(max_length)
             start_index += max_length
 
-    output = [0 for _ in range(length)]
     if found_indices:
         if binary_label:
-            for start_index in found_indices:
-                for i in range(dataset_length):
+            for idx,start_index in enumerate(found_indices):
+                for i in range(found_lengths[idx]):
                     output[start_index+i] = 1
         else:
-            for start_index in found_indices:
-                for i in range(dataset_length):
+            for idx,start_index in enumerate(found_indices):
+                for i in range(found_lengths[idx]):
                     if i == 0:
                         output[start_index+i] = 1
-                    elif i == dataset_length - 1:
+                    elif i == found_lengths[i] - 1:
                         output[start_index+i] = 3
                     else:
                         output[start_index+i] = 2
@@ -115,12 +120,10 @@ class TokenMultiClassifierPipeline(Pipeline):
             "recall": recall(probs,labels_flatten,num_classes=num_classes,average=average,),
             #"specificity": specificity(probs,labels,num_classes=num_classes),
         }
-
-    def preprocess(self,args):
-        if args.load_preprocess:
-            return self.load_preprocess_train_data(args)
-        else:
-            return self.create_preprocess_train_data(args)
+    
+    @classmethod
+    def patch_batch(cls,batch):
+        return {"input_ids": batch[0],"attention_mask": batch[3],"labels": batch[-1]}
 
     def load_preprocess_train_data(self,args):
         train_dataset_path = os.path.join(args.preprocess_train_dir,"train_dataset.pt")
@@ -144,9 +147,11 @@ class TokenMultiClassifierPipeline(Pipeline):
         else:
             input_ids = torch.load(os.path.join(args.preprocess_train_dir,args.input_ids_name))
             attention_mask = torch.load(os.path.join(args.preprocess_train_dir,args.attention_mask_name))
+            dataset_mask = torch.load(os.path.join(args.preprocess_train_dir,args.dataset_masks_name))
+            total_mask = torch.minimum(attention_mask,(dataset_mask==0).long())
             labels = torch.load(os.path.join(args.preprocess_train_dir,args.labels_name))
 
-            dataset = TensorDataset(input_ids,attention_mask,labels)
+            dataset = TensorDataset(input_ids,attention_mask,dataset_mask,total_mask,labels)
             train_size = int(args.train_size * len(dataset))
             val_size = int(args.val_size * len(dataset))
             test_size = len(dataset) - train_size - val_size
@@ -165,6 +170,8 @@ class TokenMultiClassifierPipeline(Pipeline):
                     test_dataset = test_dataset,
                     input_ids = input_ids,
                     attention_mask = attention_mask,
+                    dataset_mask = dataset_mask,
+                    total_mask = total_mask,
                     labels = labels,
                     )
             return inputs
@@ -174,9 +181,10 @@ class TokenMultiClassifierPipeline(Pipeline):
         df = pd.read_csv(args.train_csv_path)
 
         out_input_ids_path = os.path.join(args.preprocess_train_dir,args.input_ids_name)
-        out_attentation_mask_path = os.path.join(args.preprocess_train_dir,args.attentation_mask_name)
+        out_attention_mask_path = os.path.join(args.preprocess_train_dir,args.attention_mask_name)
         out_overflow_to_sample_mapping_path = os.path.join(args.preprocess_train_dir,args.overflow_to_sample_mapping_name)
         out_labels_path = os.path.join(args.preprocess_train_dir,args.labels_name)
+        out_dataset_masks_path = os.path.join(args.preprocess_train_dir,args.dataset_masks_name)
         
         out_file_paths = [out_input_ids_path,out_attention_mask_path,out_overflow_to_sample_mapping_path,out_labels_path]
         assert all([not os.path.exists(o) for o in out_file_paths])
@@ -200,18 +208,32 @@ class TokenMultiClassifierPipeline(Pipeline):
         print("Make labels")
         self.print_header()
         labels = []
+        dataset_masks = []
         ntext = len(tokenized_inputs['overflow_to_sample_mapping'])
         for i in tqdm(range(ntext)):
-            datasets = df['dataset'][int(tokenized_inputs['overflow_to_sample_mapping'][i])]
-            multidataset = "|" in datasets
-            if multidataset:
-                datasets = datasets.split("|")
-            tokenized_dataset = tokenizer(datasets)
-            if multidataset:
-                labels.append(make_labels(tokenized_inputs.input_ids[i],[ts[1:-1] for ts in tokenized_dataset['input_ids']],len(tokenized_inputs.attention_mask[i]),))
+            
+            train_datasets = df['train_dataset'][int(tokenized_inputs['overflow_to_sample_mapping'][i])]
+            external_datasets = df['external_dataset'][int(tokenized_inputs['overflow_to_sample_mapping'][i])]
+            
+            if not pd.isnull(train_datasets):
+                train_datasets = train_datasets.split("|")
+                tokenized_train_dataset = tokenizer(train_datasets)
+                train_dataset_ids = [ts[1:-1] for ts in tokenized_train_dataset['input_ids']]
             else:
-                labels.append(make_label(tokenized_inputs.input_ids[i],tokenized_dataset['input_ids'][1:-1],len(tokenized_inputs.attention_mask[i]),))
+                train_dataset_ids = []
+
+            if not pd.isnull(external_datasets):
+                external_datasets = external_datasets.split("|")
+                tokenized_external_dataset = tokenizer(external_datasets)
+                external_dataset_ids = [ts[1:-1] for ts in tokenized_external_dataset['input_ids']]
+            else:
+                external_dataset_ids = []
+
+            labels.append(make_labels(tokenized_inputs.input_ids[i],train_dataset_ids,len(tokenized_inputs.attention_mask[i]),))
+            dataset_masks.append(make_labels(tokenized_inputs.input_ids[i],external_dataset_ids,len(tokenized_inputs.attention_mask[i]),))
+        
         tokenized_inputs['labels'] = torch.tensor(labels)
+        tokenized_inputs['dataset_masks'] = torch.tensor(dataset_masks)
 
         self.print_header()
         print("Saving")
@@ -222,8 +244,9 @@ class TokenMultiClassifierPipeline(Pipeline):
             torch.save(tokenized_inputs['attention_mask'],out_attention_mask_path)
             torch.save(tokenized_inputs['overflow_to_sample_mapping'],out_overflow_to_sample_mapping_path)
             torch.save(tokenized_inputs['labels'],out_labels_path)
+            torch.save(tokenized_inputs['dataset_masks'],out_dataset_masks_path)
         
-        dataset = TensorDataset(tokenized_inputs['input_ids'],tokenized_inputs['attention_mask'],tokenized_inputs['labels'])
+        dataset = TensorDataset(tokenized_inputs['input_ids'],tokenized_inputs['attention_mask'],tokenized_inputs['dataset_masks'],tokenized_inputs['labels'],)
         train_size = int(args.train_size * len(dataset))
         val_size = int(args.val_size * len(dataset))
         test_size = len(dataset) - train_size - val_size
@@ -240,6 +263,16 @@ class TokenMultiClassifierPipeline(Pipeline):
     def create_preprocess_test_data(self,args):
         tokenizer = args.tokenizer
         df = pd.read_csv(args.test_csv_path)
+        
+        out_input_ids_path = os.path.join(args.preprocess_test_dir,args.input_ids_name)
+        out_attention_mask_path = os.path.join(args.preprocess_test_dir,args.attention_mask_name)
+        out_overflow_to_sample_mapping_path = os.path.join(args.preprocess_test_dir,args.overflow_to_sample_mapping_name)
+        out_labels_path = os.path.join(args.preprocess_test_dir,args.labels_name)
+        out_dataset_masks_path = os.path.join(args.preprocess_test_dir,args.dataset_masks_name)
+        
+        out_file_paths = [out_input_ids_path,out_attention_mask_path,out_overflow_to_sample_mapping_path,out_labels_path]
+        assert all([not os.path.exists(o) for o in out_file_paths])
+
         self.print_header()
         self.start_count_time("Tokenize")
         print("Tokenize text ")
@@ -256,58 +289,96 @@ class TokenMultiClassifierPipeline(Pipeline):
         self.print_elapsed_time("Tokenize")
         self.print_header()
 
-        if 'dataset' in df:
-            print("Make labels")
-            self.print_header()
-            labels = []
-            ntext = len(tokenized_inputs['overflow_to_sample_mapping'])
-            for i in tqdm(range(ntext)):
-                tokenized_dataset = tokenizer(df['dataset'][int(tokenized_inputs['overflow_to_sample_mapping'][i])])
-                labels.append(make_label(tokenized_inputs.input_ids[i],tokenized_dataset['input_ids'][1:-1],len(tokenized_inputs.attention_mask[i]),))
-            tokenized_inputs['labels'] = torch.tensor(labels)
+        print("Make labels")
+        self.print_header()
+        labels = []
+        dataset_masks = []
+        ntext = len(tokenized_inputs['overflow_to_sample_mapping'])
+        for i in tqdm(range(ntext)):
+            
+            train_datasets = df['test_dataset'][int(tokenized_inputs['overflow_to_sample_mapping'][i])]
+            external_datasets = df['external_dataset'][int(tokenized_inputs['overflow_to_sample_mapping'][i])]
+            
+            if not pd.isnull(train_datasets):
+                train_datasets = train_datasets.split("|")
+                tokenized_train_dataset = tokenizer(train_datasets)
+                train_dataset_ids = [ts[1:-1] for ts in tokenized_train_dataset['input_ids']]
+            else:
+                train_dataset_ids = []
 
-            self.print_header()
-            print("Saving")
-            self.print_header()
+            if not pd.isnull(external_datasets):
+                external_datasets = external_datasets.split("|")
+                tokenized_external_dataset = tokenizer(external_datasets)
+                external_dataset_ids = [ts[1:-1] for ts in tokenized_external_dataset['input_ids']]
+            else:
+                external_dataset_ids = []
 
+            labels.append(make_labels(tokenized_inputs.input_ids[i],train_dataset_ids,len(tokenized_inputs.attention_mask[i]),))
+            dataset_masks.append(make_labels(tokenized_inputs.input_ids[i],external_dataset_ids,len(tokenized_inputs.attention_mask[i]),))
+        
+        tokenized_inputs['labels'] = torch.tensor(labels)
+        tokenized_inputs['dataset_masks'] = torch.tensor(dataset_masks)
+
+        self.print_header()
+        print("Saving")
+        self.print_header()
         if args.preprocess_test_dir:
             mkdir_p(args.preprocess_test_dir)
-            torch.save(tokenized_inputs['id'],os.path.join(args.preprocess_test_dir,"id.pt"))
-            torch.save(tokenized_inputs['input_ids'],os.path.join(args.preprocess_test_dir,"input_ids.pt"))
-            torch.save(tokenized_inputs['attention_mask'],os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
-            torch.save(tokenized_inputs['overflow_to_sample_mapping'],os.path.join(args.preprocess_test_dir,"overflow_to_sample_mapping.pt"))
-            if 'dataset' in df: 
-                torch.save(tokenized_inputs['labels'],os.path.join(args.preprocess_test_dir,"labels.pt"))
-
-        return tokenized_inputs
-    
-    def load_preprocess_test_data(self,args):
-        out_input_ids_path = os.path.join(args.preprocess_test_dir,args.input_ids_name)
-        out_attention_mask_path = os.path.join(args.preprocess_test_dir,args.attention_mask_name)
-        #out_overflow_to_sample_mapping_path = os.path.join(args.preprocess_test_dir,args.overflow_to_sample_mapping_name)
+            torch.save(tokenized_inputs['input_ids'],out_input_ids_path)
+            torch.save(tokenized_inputs['attention_mask'],out_attention_mask_path)
+            torch.save(tokenized_inputs['overflow_to_sample_mapping'],out_overflow_to_sample_mapping_path)
+            torch.save(tokenized_inputs['labels'],out_labels_path)
+            torch.save(tokenized_inputs['dataset_masks'],out_dataset_masks_path)
         
-        out_file_paths = [out_input_ids_path,out_attention_mask_path,]
-        assert all([os.path.exists(o) for o in out_file_paths])
-
-        self.print_message("[load_preprocess_test_data] all dataset exists. Loading presaved dataset.")
-        #ids = torch.load(os.path.join(args.preprocess_test_dir,"id.pt"))
-        input_ids = torch.load(os.path.join(args.preprocess_test_dir,"input_ids.pt"))
-        attention_mask = torch.load(os.path.join(args.preprocess_test_dir,"attention_mask.pt"))
-        overflow_to_sample_mapping = torch.load(os.path.join(args.preprocess_test_dir,"overflow_to_sample_mapping.pt"))
-        if os.path.exists(os.path.join(args.preprocess_test_dir,"labels.pt")):
-            labels = torch.load(os.path.join(args.preprocess_test_dir,"labels.pt"))
-        else:
-            labels = None
-
-        dataset = TensorDataset(input_ids,attention_mask,overflow_to_sample_mapping)
+        dataset = TensorDataset(tokenized_inputs['input_ids'],tokenized_inputs['attention_mask'],tokenized_inputs['dataset_masks'],tokenized_inputs['labels'],)
+        train_size = int(args.train_size * len(dataset))
+        val_size = int(args.val_size * len(dataset))
+        test_size = len(dataset) - train_size - val_size
+        
+        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
         inputs = ObjDict(
-                test_dataset = dataset,
-                input_ids = input_ids,
-                attention_mask = attention_mask,
-                overflow_to_sample_mapping = overflow_to_sample_mapping,
-                labels = labels,
+                dataset = dataset,
+                train_dataset = train_dataset,
+                val_dataset = val_dataset,
+                test_dataset = test_dataset,
                 )
         return inputs
+    
+    def load_preprocess_test_data(self,args):
+        test_dataset_path = os.path.join(args.preprocess_test_dir,"test_dataset.pt")
+
+        test_dataset_exists = os.path.exists(test_dataset_path)
+
+        if test_dataset_exists:
+            self.print_message("[load_preprocess_test_data] all dataset exists. Loading presaved dataset.")
+            test_dataset = torch.load(test_dataset_path)
+            return ObjDict(
+                    test_dataset = test_dataset,
+                    )
+        else:
+            input_ids = torch.load(os.path.join(args.preprocess_test_dir,args.input_ids_name))
+            attention_mask = torch.load(os.path.join(args.preprocess_test_dir,args.attention_mask_name))
+            dataset_mask = torch.load(os.path.join(args.preprocess_test_dir,args.dataset_masks_name))
+            total_mask = torch.minimum(attention_mask,(dataset_mask==0).long())
+            labels = torch.load(os.path.join(args.preprocess_test_dir,args.labels_name))
+
+            dataset = TensorDataset(input_ids,attention_mask,dataset_mask,total_mask,labels)
+            _, _, test_dataset = torch.utils.data.random_split(dataset, [0, 0, len(dataset)])
+
+            if args.preprocess_train_dir:
+                mkdir_p(args.preprocess_test_dir)
+                torch.save(test_dataset,test_dataset_path)
+
+            inputs = ObjDict(
+                    dataset = dataset,
+                    test_dataset = test_dataset,
+                    input_ids = input_ids,
+                    attention_mask = attention_mask,
+                    dataset_mask = dataset_mask,
+                    total_mask = total_mask,
+                    labels = labels,
+                    )
+            return inputs
 
     def randomize_train_data(self,inputs,cfg):
         self.print_message("[randomize_train_data]")
