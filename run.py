@@ -8,7 +8,10 @@ job_keywords = [
         "load_train_data",
         "create_test_data",
         "load_test_data",
+        "load_train_test_data",
         "randomize_train_data",
+        "include_external_dataset_as_label_train",
+        "include_external_dataset_as_label_test",
         "train",
         "predict",
         "evaluate",
@@ -44,9 +47,18 @@ if __name__ == "__main__":
     if "load_test_data" in jobs:
         inputs = pipeline.load_preprocess_test_data(cfg.preprocess_cfg)
 
+    if "load_train_test_data" in jobs:
+        inputs = pipeline.load_preprocess_train_test_data(cfg.preprocess_cfg)
+
     if "randomize_train_data" in jobs:
         pipeline.randomize_train_data(inputs,cfg)
-    
+
+    if "include_external_dataset_as_label_train" in jobs:
+        inputs.train_dataset = pipeline.include_external_dataset_as_label(inputs.train_dataset,cfg)
+
+    if "include_external_dataset_as_label_test" in jobs:
+        inputs.val_dataset = pipeline.include_external_dataset_as_label(inputs.val_dataset,cfg)
+
     if "train" in jobs:
         pipeline.train(inputs,cfg.model,cfg.train_cfg)
     
