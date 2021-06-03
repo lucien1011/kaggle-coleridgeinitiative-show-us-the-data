@@ -2,6 +2,8 @@ import os
 import sys
 import glob
 import argparse
+import pprint
+import pickle
 
 import torch
 from torch.utils.data import DataLoader
@@ -14,6 +16,7 @@ from utils.objdict import ObjDict
 from utils.mkdir_p import mkdir_p
 
 fkey = "labels"
+pickle_fname = "data.p"
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -23,9 +26,11 @@ def parse_arguments():
     parser.add_argument('--ymin',type=float,default=0.,)
     parser.add_argument('--ymax',type=float,default=1.,)
     parser.add_argument('--external_dataset',action='store_true',)
+    parser.add_argument('--print',action='store_true',)
+    parser.add_argument('--key_checkpts',type=str,)
     return parser.parse_args()
 
-def compute_metric_dict(cfg,device='cuda',dataset_name="train:val_dataset",external_dataset=False):
+def compute_metric_dict(cfg,device='cuda',dataset_name="train:val_dataset",external_dataset=False,key_checkpts=""):
 
     pp = cfg.pipeline
     print("Processing: "+cfg.name)
@@ -53,6 +58,9 @@ def compute_metric_dict(cfg,device='cuda',dataset_name="train:val_dataset",exter
     out_dict = {}
     checkpts = pp.get_model_checkpts(cfg.predict_cfg.model_dir,cfg.predict_cfg.model_key)
     for c in checkpts:
+        pp.print_message("Reading "+c)
+        if key_checkpts and key_checkpts not in c:
+            continue
         cdir = os.path.join(cfg.predict_cfg.output_dir,c)
         if not os.path.exists(cdir):
             print(cdir+" not exist")
@@ -60,8 +68,8 @@ def compute_metric_dict(cfg,device='cuda',dataset_name="train:val_dataset",exter
         fs = [f for f in os.listdir(cdir) if ".pt" in f and fkey in f]
         fs.sort(key=lambda x: int(x.replace(".pt","").split("_")[-1]))
         preds = torch.cat([torch.load(os.path.join(cdir,f)).logits for f in fs])
+        assert len(preds) == len(batch['labels']), "input_shape are "+" ".join([str(preds.shape),str(batch['labels'].shape)])
         metrics = pp.compute_metrics(preds,batch['labels'],cfg.nlabel,islogit=True)
-        pp.print_message(c)
         
         c_int = int(c.replace(cfg.predict_cfg.model_key,""))
         for name,value in metrics.items():
@@ -89,16 +97,21 @@ if __name__ == "__main__":
     
     data = {}
     for c in cfgs:
-        out_dict = compute_metric_dict(c,dataset_name=dataset_name,external_dataset=args.external_dataset)
+        out_dict = compute_metric_dict(c,dataset_name=dataset_name,external_dataset=args.external_dataset,key_checkpts=args.key_checkpts)
         if out_dict:
             data[c] = out_dict
     cfgs = list(data.keys())
+    
+    mkdir_p(output_dir)
+    pickle.dump({c.name: value for c,value in data.items()},open(os.path.join(args.output_dir,pickle_fname),"wb"))
+
+    if args.print:
+        pprint.pprint(data)
 
     assert len(data) > 0
     assert all([list(data[c].keys()) == list(data[cfgs[0]].keys()) for c in cfgs[1:]])
 
     np = len(data[cfgs[0]])
-    mkdir_p(output_dir)
     names = data[cfgs[0]].keys()
     fig, ax = plt.subplots(figsize=(10, 5))
     for ip,name in enumerate(names):
