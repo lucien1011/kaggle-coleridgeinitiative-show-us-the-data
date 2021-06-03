@@ -8,6 +8,7 @@ job_keywords = [
         "load_train_data",
         "create_test_data",
         "load_test_data",
+        "load_train_test_data",
         "randomize_train_data",
         "train",
         "predict",
@@ -43,6 +44,9 @@ if __name__ == "__main__":
     
     if "load_test_data" in jobs:
         inputs = pipeline.load_preprocess_test_data(cfg.preprocess_cfg)
+
+    if "load_train_test_data" in jobs:
+        inputs = pipeline.load_preprocess_train_test_data(cfg.preprocess_cfg)
 
     if "randomize_train_data" in jobs:
         pipeline.randomize_train_data(inputs,cfg)

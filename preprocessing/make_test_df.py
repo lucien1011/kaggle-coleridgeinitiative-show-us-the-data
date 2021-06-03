@@ -34,7 +34,7 @@ if __name__ == "__main__":
         text = " ".join(f.readlines())
         outdict['text'].append(text)
         outdict['id'].append(fname)
-        outdict["test_dataset"].append("|".join([d for d in train_dataset_names if d in text]))
+        outdict["train_dataset"].append("|".join([d for d in train_dataset_names if d in text]))
         outdict["external_dataset"].append("|".join([d for d in val_dataset_names if d in text]))
     df = pd.DataFrame(outdict)
     df.to_csv(os.path.join(args.output_dir,"test_sequence.csv"),index=False) 
