@@ -24,37 +24,6 @@ softmax = torch.nn.Softmax(dim=-1)
 from torch.nn import CosineSimilarity
 cos = CosineSimilarity(dim=1,eps=1e-6)
 
-def make_label(input_ids,dataset_ids,length,binary_label=True):
-    start_index = 1
-    dataset_length = len(dataset_ids)
-    seq_length = len(input_ids)
-    found_indices = []
-
-    while start_index + dataset_length < seq_length:
-        if not all([input_ids[start_index+i] == dataset_ids[i] for i in range(dataset_length)]):
-            start_index += 1 
-        else:
-            found_indices.append(start_index)
-            start_index += dataset_length
-
-    output = [0 for _ in range(length)]
-    if found_indices:
-        if binary_label:
-            for start_index in found_indices:
-                for i in range(dataset_length):
-                    output[start_index+i] = 1
-        else:
-            for start_index in found_indices:
-                for i in range(dataset_length):
-                    if i == 0:
-                        output[start_index+i] = 1
-                    elif i == dataset_length - 1:
-                        output[start_index+i] = 3
-                    else:
-                        output[start_index+i] = 2
-
-    return output
-
 def find_sub_list(sl,l):
     results=[]
     sll=len(sl)
@@ -77,19 +46,32 @@ def make_labels(input_ids,dataset_ids):
 class TokenMultiClassifierPipeline(Pipeline):
 
     @classmethod
-    def compute_metrics(cls,preds,labels,num_classes,islogit=False,average='macro',):
+    def compute_metrics(cls,preds,labels,num_classes,islogit=False,average=None,smooth=0.5):
         if islogit:
-            probs = softmax(preds).flatten(0,1)
+            probs = softmax(preds)
         else:
-            probs = softmax(preds.logits).flatten(0,1)
+            probs = softmax(preds.logits)
+
+        pred_labels = torch.argmax(probs,axis=2)
+
+        pred_labels_flatten = pred_labels.flatten(0,1)
         labels_flatten = labels.flatten(0,1)
+
+        intersection = pred_labels * labels
+        union = pred_labels + labels - intersection
+        IoU = (intersection + smooth)/(union + smooth)
+        
         return {
-            "accuracy": accuracy(probs,labels_flatten,num_classes=num_classes,average=average,),
-            #"auroc": auroc(probs,labels_flatten),
-            "f1": f1(probs,labels_flatten,num_classes=num_classes,average=average,),
-            "precision": precision(probs,labels_flatten,num_classes=num_classes,average=average,),
-            "recall": recall(probs,labels_flatten,num_classes=num_classes,average=average,),
-            #"specificity": specificity(probs,labels,num_classes=num_classes),
+            "IoU": IoU.mean(),
+            "accuracy": accuracy(pred_labels_flatten,labels_flatten,num_classes=num_classes,average='micro',),
+            "f1": f1(pred_labels_flatten,labels_flatten,num_classes=num_classes,average=average,)[-1],
+            "precision": precision(pred_labels_flatten,labels_flatten,num_classes=num_classes,average=average,)[-1],
+            "recall": recall(pred_labels_flatten,labels_flatten,num_classes=num_classes,average=average,)[-1],
+            ##"auroc": auroc(probs,labels_flatten),
+            #"f1": f1(probs,labels_flatten,),#num_classes=num_classes,average=average,),
+            #"precision": precision(probs,labels_flatten,),#num_classes=num_classes,average=average,),
+            #"recall": recall(probs,labels_flatten,),#num_classes=num_classes,average=average,),
+            ##"specificity": specificity(probs,labels,num_classes=num_classes),
         }
     
     @classmethod
@@ -207,9 +189,8 @@ class TokenMultiClassifierPipeline(Pipeline):
             input_ids = torch.load(os.path.join(args.dataset_dir,args.input_ids_name))
             attention_mask = torch.load(os.path.join(args.dataset_dir,args.attention_mask_name))
             dataset_mask = torch.load(os.path.join(args.dataset_dir,args.dataset_masks_name))
-            total_mask = torch.minimum(attention_mask,(dataset_mask==0).long())
             labels = torch.load(os.path.join(args.dataset_dir,args.labels_name))
-
+            total_mask = torch.minimum(attention_mask,(dataset_mask==0).long())
             dataset = TensorDataset(input_ids,attention_mask,dataset_mask,total_mask,labels)
 
             if args.dataset_dir:
@@ -296,11 +277,15 @@ class TokenMultiClassifierPipeline(Pipeline):
     def randomize_train_data(self,inputs,cfg):
         self.print_message("[randomize_train_data]")
         assert cfg.randomize_cfg.fraction > 0. and cfg.randomize_cfg.fraction < 1.
-        train_dataset = inputs.train_dataset.dataset[inputs.train_dataset.indices]
-        mask = torch.rand(train_dataset[0].shape) < cfg.randomize_cfg.fraction
-        pos_label = train_dataset[2].bool()
-        train_dataset[0][pos_label*mask] = torch.randint(3,cfg.tokenizer.vocab_size,(torch.sum(mask*pos_label),))
-        inputs.train_dataset = TensorDataset(*train_dataset)
+        train_dataset = inputs.train_dataset
+        mask = torch.rand(train_dataset.tensors[-1].shape) < cfg.randomize_cfg.fraction
+        pos_label = train_dataset.tensors[-1].bool()
+        train_dataset.tensors[0][pos_label*mask] = torch.randint(3,cfg.tokenizer.vocab_size,(torch.sum(mask*pos_label),))
+        inputs.train_dataset = TensorDataset(*train_dataset.tensors)
+
+    def include_external_dataset_as_label(self,dataset,cfg):
+        self.print_message("[include_external_dataset_as_label]")
+        return TensorDataset(*[t for t in dataset.tensors[:-1]]+[torch.maximum(dataset.tensors[-1],dataset.tensors[-3])])
 
     def predict(self,inputs,model,args):
         checkpts = self.get_model_checkpts(args.model_dir,args.model_key)
