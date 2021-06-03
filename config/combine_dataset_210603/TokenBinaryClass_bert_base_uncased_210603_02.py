@@ -2,21 +2,22 @@ import os
 import numpy as np
 import torch
 
-from transformers import BertTokenizerFast
+from transformers import BertForTokenClassification,BertTokenizerFast,BertConfig,BertModel,BertConfig
 
-from model.BertConv1d import BertConv1dForTokenClassification,BertConv1dConfig
 from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-base_dir = "rcdataset_210529"
-name = "TokenBinaryClass_conv1d_bert_base_uncased_210528_01"
+base_dir = "combine_dataset_210603"
+name = "TokenBinaryClass_bert_base_uncased_dropout0p5"
 base_pretrained = "bert-base-uncased"
-plot_label = "bert-base-uncased-conv1d-4layer_rand-frac-0.1"
+plot_label = "bert-base-uncased-linear_rand-frac-0.0"
 
-t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/data/"
-preprocess_train_dir = os.path.join(t2_dir,"TokenBinaryClass_bert_base_uncased_210522_01","train/")
-preprocess_test_dir = os.path.join(t2_dir,"rcdataset_210529","TokenBinaryClass_bert_base_uncased_210522_01","test/")
+t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/preprocess_data/"
+preprocess_train_dir = os.path.join(t2_dir,"combine_dataset_210601","TokenBinaryClass_bert_base_uncased_210602_02","train/")
+preprocess_test_dir = os.path.join(t2_dir,"combine_dataset_210601","TokenBinaryClass_bert_base_uncased_210602_02","test/")
+
+result_dir = "/blue/avery/kinho.lo/kaggle-coleridgeinitiative-show-us-the-data/storage/results/"
 
 label_list = range(2)
 nlabel = len(label_list)
@@ -24,41 +25,30 @@ nlabel = len(label_list)
 # __________________________________________________________________ ||
 pipeline = TokenMultiClassifierPipeline()
 
-config = BertConv1dConfig(
-        num_labels = nlabel,
-        conv_setting = [
-            {"in_channels":768, "out_channels":512, "kernel_size":15,},
-            {"in_channels":512, "out_channels":256, "kernel_size":15,},
-            {"in_channels":256, "out_channels":128, "kernel_size":15,},
-            {"in_channels":128, "out_channels":nlabel, "kernel_size":15,},
-            ],
-        )
-model = BertConv1dForTokenClassification.from_pretrained(
-    'model/'+base_pretrained,
-    config=config,
-    )
+model = BertForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list),hidden_dropout_prob=0.5)
 
 tokenizer = BertTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
 
 # __________________________________________________________________ ||
 preprocess_cfg = ObjDict(
-        train_csv_path = "data/train_sequence_has_dataset.csv",
+        train_csv_path = "storage/data/combine_dataset/train_sequence.csv",
         train_size = 0.8,
         val_size = 0.1,
         tokenizer = tokenizer,
         preprocess_train_dir = preprocess_train_dir,
         load_preprocess = True,
-        test_csv_path = 'storage/input/rcdataset/df_rcdataset_has_dataset.csv',
+        test_csv_path = 'storage/input/rcdataset/df_rcdataset.csv',
         preprocess_test_dir = preprocess_test_dir,
         input_ids_name = "input_ids.pt",
         attention_mask_name = "attention_mask.pt",
         labels_name = "labels.pt",
+        dataset_masks_name = "dataset_masks.pt",
         overflow_to_sample_mapping_name = "overflow_to_sample_mapping.pt",
         )
 
 # __________________________________________________________________ ||
 randomize_cfg = ObjDict(
-        fraction = 0.1,
+        fraction = 0.0,
         )
 
 # __________________________________________________________________ ||
@@ -66,18 +56,18 @@ train_cfg = ObjDict(
         train_batch_size = 8,
         per_gpu_train_batch_size = 1,
         val_batch_size = 128,
-        num_train_epochs = 5,
+        num_train_epochs = 3,
         learning_rate = 2e-5,
         betas=(0.9,0.999),
         adam_epsilon = 1e-9,
         weight_decay = 0.00,
-        warmup_steps = 0.1,
+        warmup_steps = 0.0,
         gradient_accumulation_steps = 1,
         seed = 1,
         device = 'cuda',
         max_grad_norm = 9999.,
         save_steps = 0,
-        output_dir = os.path.join('log/',base_dir,name),
+        output_dir = os.path.join(result_dir,base_dir,name),
         max_steps = 999999999.,
         n_gpu = 0,
         logging_steps = 100,
@@ -85,20 +75,19 @@ train_cfg = ObjDict(
 
 # __________________________________________________________________ ||
 predict_cfg = ObjDict(
-        model_dir = os.path.join('log',"randomize_210528",name,),
+        model_dir = os.path.join(result_dir,base_dir,name,),
         model_key = 'checkpoint-epoch-',
         device = "cuda",
-        batch_size = 128,
-        output_dir = os.path.join(t2_dir,base_dir,name,"pred/"),
+        batch_size = 256,
+        output_dir = os.path.join(result_dir,base_dir,name,"pred/"),
         pred_name = "labels",
         pred_extension = ".pt",
-        #val_dataset_name = "val_dataset",
         val_dataset_name = "test_dataset",
         )
 
 # __________________________________________________________________ ||
 extract_cfg = ObjDict(
-        model_dir = os.path.join('log',base_dir,name,),
+        model_dir = os.path.join(result_dir,base_dir,name,),
         model_key = 'checkpoint-epoch-',
         device = "cuda",
         batch_size = 256,
@@ -108,17 +97,7 @@ extract_cfg = ObjDict(
         )
 
 # __________________________________________________________________ ||
-evaluate_cfg = ObjDict(
-        pretrain_model = os.path.join("log",base_dir,name,"checkpoint-8000"),
-        device = 'cuda',
-        batch_size = 128,
-        test = True,
-        print_per_step = 1,
-        dataset_tokens_path = "data/optimise_TokenMultiClass_distilbert_base_uncased_210517/train/dataset_tokens.pt",
-        )
-
-# __________________________________________________________________ ||
-slurm_job_dir = os.path.join('log/',base_dir,name+"/")
+slurm_job_dir = os.path.join(result_dir,base_dir,name+"/")
 slurm_cfg = ObjDict(
     name = name,
     slurm_cfg_name = 'submit.cfg',
@@ -126,5 +105,5 @@ slurm_cfg = ObjDict(
     memory = '32gb',
     email = 'kin.ho.lo@cern.ch',
     time = '72:00:00',
-    gpu = 'geforce:1',
+    gpu = 'geforce',
     )
