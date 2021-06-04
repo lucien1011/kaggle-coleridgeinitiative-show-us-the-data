@@ -59,7 +59,11 @@ class Pipeline(object):
         return [c for c in os.listdir(input_dir) if key in c and os.path.isdir(os.path.join(input_dir,c))]
 
     @classmethod
-    def patch_batch(cls,batch):
+    def patch_train_batch(cls,batch):
+        return {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
+
+    @classmethod
+    def patch_test_batch(cls,batch):
         return {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
 
     def train(self,inputs,model,args):
@@ -109,7 +113,7 @@ class Pipeline(object):
             for step, batch in enumerate(epoch_iterator):
                 model.train()
                 batch = tuple(t.to(args.device) for t in batch)
-                batch_train = self.patch_batch(batch)
+                batch_train = self.patch_train_batch(batch)
 
                 outputs = model(**batch_train)
                 loss = outputs[0]
@@ -132,8 +136,9 @@ class Pipeline(object):
                     global_step += 1
 
                     if args.logging_steps > 0 and global_step % args.logging_steps == 0:
+                        model.eval()
                         batch_val = tuple(t.to(args.device) for t in iter(val_dataloader).next())
-                        batch_val = self.patch_batch(batch_val)
+                        batch_val = self.patch_test_batch(batch_val)
 
                         with torch.no_grad():
                             preds_val = model(**batch_val)
