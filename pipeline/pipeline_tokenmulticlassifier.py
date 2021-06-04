@@ -68,16 +68,15 @@ class TokenMultiClassifierPipeline(Pipeline):
             "precision": precision(pred_labels_flatten,labels_flatten,num_classes=num_classes,average=average,)[-1],
             "recall": recall(pred_labels_flatten,labels_flatten,num_classes=num_classes,average=average,)[-1],
             "ntf": labels_flatten.sum(),
-            ##"auroc": auroc(probs,labels_flatten),
-            #"f1": f1(probs,labels_flatten,),#num_classes=num_classes,average=average,),
-            #"precision": precision(probs,labels_flatten,),#num_classes=num_classes,average=average,),
-            #"recall": recall(probs,labels_flatten,),#num_classes=num_classes,average=average,),
-            ##"specificity": specificity(probs,labels,num_classes=num_classes),
         }
     
     @classmethod
-    def patch_batch(cls,batch):
+    def patch_train_batch(cls,batch):
         return {"input_ids": batch[0],"attention_mask": batch[3],"labels": batch[-1]}
+
+    @classmethod
+    def patch_test_batch(cls,batch):
+        return {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[-1]}
 
     def create_preprocess_train_data(self,args):
         train_args = ObjDict(
@@ -307,6 +306,7 @@ class TokenMultiClassifierPipeline(Pipeline):
                 self.print_message("Skipping "+cdir)
                 continue
             model = model.from_pretrained(os.path.join(args.model_dir,c)).to(args.device)
+            model.eval()
             dataloader = DataLoader(dataset, batch_size=args.batch_size)
             iterator = tqdm(dataloader, desc="Iteration",)
             for step,batch in enumerate(iterator):
@@ -330,6 +330,7 @@ class TokenMultiClassifierPipeline(Pipeline):
                 self.print_message("Skipping "+cdir)
                 continue
             model = model.from_pretrained(os.path.join(args.model_dir,c)).to(args.device)
+            model.eval()
             dataloader = DataLoader(dataset, batch_size=args.batch_size)
             iterator = tqdm(dataloader, desc="Iteration",)
             for step,batch in enumerate(iterator):
