@@ -67,6 +67,7 @@ class TokenMultiClassifierPipeline(Pipeline):
             "f1": f1(pred_labels_flatten,labels_flatten,num_classes=num_classes,average=average,)[-1],
             "precision": precision(pred_labels_flatten,labels_flatten,num_classes=num_classes,average=average,)[-1],
             "recall": recall(pred_labels_flatten,labels_flatten,num_classes=num_classes,average=average,)[-1],
+            "ntf": labels_flatten.sum(),
             ##"auroc": auroc(probs,labels_flatten),
             #"f1": f1(probs,labels_flatten,),#num_classes=num_classes,average=average,),
             #"precision": precision(probs,labels_flatten,),#num_classes=num_classes,average=average,),
@@ -286,6 +287,13 @@ class TokenMultiClassifierPipeline(Pipeline):
     def include_external_dataset_as_label(self,dataset,cfg):
         self.print_message("[include_external_dataset_as_label]")
         return TensorDataset(*[t for t in dataset.tensors[:-1]]+[torch.maximum(dataset.tensors[-1],dataset.tensors[-3])])
+
+    def mask_dataset_name(self,dataset,cfg):
+        self.print_message("[mask_dataset_name]")
+        ids = dataset.tensors[0]
+        ids[dataset.tensors[-1].bool()] = -100
+        inputs = [ids]+[t for t in dataset.tensors[1:]]
+        return TensorDataset(*inputs)
 
     def predict(self,inputs,model,args):
         checkpts = self.get_model_checkpts(args.model_dir,args.model_key)

@@ -12,6 +12,7 @@ job_keywords = [
         "randomize_train_data",
         "include_external_dataset_as_label_train",
         "include_external_dataset_as_label_test",
+        "mask_train_dataset_name",
         "train",
         "predict",
         "evaluate",
@@ -58,6 +59,9 @@ if __name__ == "__main__":
 
     if "include_external_dataset_as_label_test" in jobs:
         inputs.val_dataset = pipeline.include_external_dataset_as_label(inputs.val_dataset,cfg)
+
+    if "mask_train_dataset_name" in jobs:
+        inputs.train_dataset = pipeline.mask_dataset_name(inputs.train_dataset,cfg)
 
     if "train" in jobs:
         pipeline.train(inputs,cfg.model,cfg.train_cfg)
