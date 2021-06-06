@@ -7,6 +7,14 @@ train_files_path = 'input/train'
 test_files_path = 'input/test'
 sec_divider = '|||||||'
 
+def clean_text(s):
+    """
+    This function is essentially clean_text without lowercasing.
+    """
+    s = re.sub('[^A-Za-z0-9]+', ' ', str(s)).strip()
+    s = re.sub(' +', ' ', s)
+    return s
+
 def json_to_text(filename, train_files_path=train_files_path, output='text'):
     json_path = os.path.join(train_files_path, (filename+'.json'))
     headings = []
