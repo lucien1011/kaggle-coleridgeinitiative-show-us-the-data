@@ -16,7 +16,7 @@ def parse_arguments():
     parser.add_argument('input_dir',type=str)
     parser.add_argument('output_dir',type=str)
     parser.add_argument('--df_name',type=str,default='test_sequence.csv')
-    parser.add_argument('--train_data_dir',type=str,default='storage/input/kaggle_dataset/')
+    parser.add_argument('--train_df_path',type=str,default='storage/input/kaggle_dataset/train.csv')
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -28,9 +28,8 @@ if __name__ == "__main__":
     pub_to_dataset_map_path = os.path.join(args.input_dir,"pub_to_dataset_map.p")
     dataset_unique_map_path = os.path.join(args.input_dir,"data_sets_unique_map.p")
     text_path = os.path.join(args.input_dir,"text/")
-    train_dataset_names_path = os.path.join(args.train_data_dir,"train_dataset_names.p")
 
-    assert os.path.exists(pub_to_dataset_map_path) and os.path.exists(dataset_unique_map_path) and os.path.exists(text_path) and os.path.exists(train_dataset_names_path)
+    assert os.path.exists(pub_to_dataset_map_path) and os.path.exists(dataset_unique_map_path) and os.path.exists(text_path) and os.path.exists(args.train_df_path)
     
     fnames = os.listdir(text_path)
     
@@ -40,7 +39,8 @@ if __name__ == "__main__":
     outdict = defaultdict(list)
     pub_to_dataset_map = pickle.load(open(pub_to_dataset_map_path,"rb"))
     dataset_unique_map = pickle.load(open(dataset_unique_map_path,"rb"))
-    train_dataset_names = pickle.load(open(train_dataset_names_path,"rb"))
+    train_df = pd.read_csv(args.train_df_path)
+    train_dataset_names = train_df.dataset_label.unique().tolist()
     for fname in fnames:
         print("Processing ",fname)
         input_path = os.path.join(text_path,fname)
@@ -49,6 +49,7 @@ if __name__ == "__main__":
         text = remove_reference(text)
 
         textId = int(fname.replace(".txt",""))
+        outdict["train_dataset"].append("|".join([clean_text(d) for d in train_dataset_names if d in text]))
         clean_datasets = []
         if textId in pub_to_dataset_map:
             orig_dataset_names = pub_to_dataset_map[textId]
@@ -57,7 +58,6 @@ if __name__ == "__main__":
                 text = text.replace(orig_dataset_name,dataset_unique_map[orig_dataset_name]['title'])
                 clean_datasets.append(clean_text(dataset_unique_map[orig_dataset_name]['title']))
 
-        outdict["train_dataset"].append("|".join([clean_text(d) for d in train_dataset_names if d in text]))
         outdict['text'].append(clean_text(text))
         outdict['id'].append(fname)
 
