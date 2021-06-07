@@ -72,12 +72,12 @@ class TokenMultiClassifierPipeline(Pipeline):
     
     @classmethod
     def patch_train_batch(cls,batch):
-        return {"input_ids": batch[0],"attention_mask": batch[3],"labels": batch[-1]}
+        return {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[-1]}
 
     @classmethod
     def patch_test_batch(cls,batch):
         return {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[-1]}
-
+    
     def create_preprocess_train_data(self,args):
         train_args = ObjDict(
                 tokenizer = args.tokenizer,
@@ -190,8 +190,7 @@ class TokenMultiClassifierPipeline(Pipeline):
             attention_mask = torch.load(os.path.join(args.dataset_dir,args.attention_mask_name))
             dataset_mask = torch.load(os.path.join(args.dataset_dir,args.dataset_masks_name))
             labels = torch.load(os.path.join(args.dataset_dir,args.labels_name))
-            total_mask = torch.minimum(attention_mask,(dataset_mask==0).long())
-            dataset = TensorDataset(input_ids,attention_mask,dataset_mask,total_mask,labels)
+            dataset = TensorDataset(input_ids,attention_mask,dataset_mask,labels)
 
             if args.dataset_dir:
                 mkdir_p(args.dataset_dir)
@@ -285,13 +284,12 @@ class TokenMultiClassifierPipeline(Pipeline):
 
     def include_external_dataset_as_label(self,dataset,cfg):
         self.print_message("[include_external_dataset_as_label]")
-        return TensorDataset(*[t for t in dataset.tensors[:-1]]+[torch.maximum(dataset.tensors[-1],dataset.tensors[-3])])
+        return TensorDataset(*[t for t in dataset.tensors[:-1]]+[torch.maximum(dataset.tensors[-1],dataset.tensors[-2])])
 
-    def mask_dataset_name(self,dataset,cfg):
-        self.print_message("[mask_dataset_name]")
-        ids = dataset.tensors[0]
-        ids[dataset.tensors[-1].bool()] = -100
-        inputs = [ids]+[t for t in dataset.tensors[1:]]
+    def mask_test_dataset_name_train(self,dataset,cfg):
+        self.print_message("[mask_test_dataset_name_train]")
+        total_mask = torch.minimum(dataset.tensors[1],(dataset.tensors[2]==0).long())
+        inputs = [dataset.tensors[0]]+[total_mask]+[t for t in dataset.tensors[2:]]
         return TensorDataset(*inputs)
 
     def predict(self,inputs,model,args):
