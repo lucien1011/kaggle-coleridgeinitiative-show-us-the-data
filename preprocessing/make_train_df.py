@@ -39,6 +39,7 @@ if __name__ == "__main__":
         val_datasets = []
         for d,info in dataset_unique_map.items():
             if d in text:
+                if any([td in d for td in train_dataset_names]): continue
                 val_datasets.append(d)
                 clean_val_datasets.append(info['title'])
                 text = text.replace(d,info['title'])

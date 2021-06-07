@@ -25,6 +25,12 @@ allow_word_list = [
         "national",
         "Cohort",
         "cohort",
+        "Report",
+        "Reports",
+        "report",
+        "reports",
+        "Data",
+        "data",
         ]
 
 out_dict = {}
