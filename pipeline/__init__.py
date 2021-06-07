@@ -66,6 +66,10 @@ class Pipeline(object):
     def patch_test_batch(cls,batch):
         return {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
 
+    @classmethod
+    def custom_print_in_validation(cls,preds,labels):
+        pass
+
     def train(self,inputs,model,args):
         model.to(args.device)
         if not args.train_batch_size:
@@ -146,6 +150,8 @@ class Pipeline(object):
                             preds_train = model(**batch_train)
                             metrics_train = self.compute_metrics(preds_train,batch_train['labels'],num_classes=model.num_labels)
                             metrics_val = self.compute_metrics(preds_val,batch_val['labels'],num_classes=model.num_labels)
+
+                        self.custom_print_in_validation(batch_val,preds_val,batch_val['labels'])
 
                         tqdm.write("*"*100)
                         tqdm.write("global step {global_step}".format(global_step=global_step))
