@@ -4,15 +4,16 @@ from torch.nn import CrossEntropyLoss
 from transformers import BertPreTrainedModel,BertModel,BertConfig
 from transformers.modeling_outputs import TokenClassifierOutput
 
-class BertForMaskTokenClassification(BertPreTrainedModel):
+class CustomBertForTokenClassification(BertPreTrainedModel):
 
-    def __init__(self, config):
+    def __init__(self, config , class_weight=None):
         super().__init__(config)
         self.num_labels = config.num_labels
 
         self.bert = BertModel(config, add_pooling_layer=False)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+        self.classifier = nn.Linear(config.num_hidden_layers*config.hidden_size, config.num_labels)
+        self.class_weight = class_weight
 
         self.init_weights()
 
@@ -38,7 +39,7 @@ class BertForMaskTokenClassification(BertPreTrainedModel):
 
         outputs = self.bert(
             input_ids,
-            attention_mask=attention_mask-(labels>0).long(),
+            attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             position_ids=position_ids,
             head_mask=head_mask,
@@ -48,14 +49,13 @@ class BertForMaskTokenClassification(BertPreTrainedModel):
             return_dict=return_dict,
         )
 
-        sequence_output = outputs[0]
-
+        sequence_output = torch.cat(outputs.hidden_states[1:],axis=2)
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
 
         loss = None
         if labels is not None:
-            loss_fct = CrossEntropyLoss()
+            loss_fct = CrossEntropyLoss(weight=self.class_weight)
             # Only keep active parts of the loss
             if attention_mask is not None:
                 active_loss = attention_mask.view(-1) == 1
