@@ -34,7 +34,8 @@ if __name__ == "__main__":
     pipeline = cfg.pipeline
     jobs = args.jobs.split(",")
 
-    assert all([j in job_keywords for j in jobs])
+    jobs_not_supported = [j for j in jobs if j not in job_keywords]
+    assert len(jobs_not_supported) > 0,"Not matching keywords: "+",".join(jobs_not_supported)
     
     if "create_train_data" in jobs:
         inputs = pipeline.create_preprocess_train_data(cfg.preprocess_cfg)
