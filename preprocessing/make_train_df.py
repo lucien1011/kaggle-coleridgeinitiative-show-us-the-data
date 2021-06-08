@@ -41,8 +41,8 @@ if __name__ == "__main__":
             if d in text:
                 if any([td in d for td in train_dataset_names]): continue
                 val_datasets.append(d)
-                clean_val_datasets.append(info['title'])
-                text = text.replace(d,info['title'])
+                clean_val_datasets.append(info['unique_dataset_name'])
+                text = text.replace(d,info['unique_dataset_name'])
         out_dict["external_dataset"].append("|".join(list(set(clean_val_datasets))))
         out_dict["orig_external_dataset"].append("|".join(list(set(val_datasets))))
         out_dict["text"].append(clean_text(text))

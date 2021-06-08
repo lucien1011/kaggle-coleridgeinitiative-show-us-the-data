@@ -64,6 +64,6 @@ if __name__ == "__main__":
         dataset_str = "|".join(list(set((clean_datasets))))
         outdict['external_dataset'].append(dataset_str)
 
-
+    mkdir_p(args.output_dir)
     df = pd.DataFrame(outdict)
     df.to_csv(os.path.join(args.output_dir,args.df_name),index=False)
