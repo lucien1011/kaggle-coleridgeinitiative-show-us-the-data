@@ -2,32 +2,37 @@ import os
 import numpy as np
 import torch
 
-from transformers import BertForTokenClassification,BertTokenizerFast,BertConfig,BertModel,BertConfig
+from model.CustomBertForTokenClassification import CustomBertForTokenClassification
+from transformers import BertTokenizerFast,BertConfig,BertModel,BertConfig
 
 from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-base_dir = "train_dataset_externalcv_210605"
-name = "TokenBinaryClass_bert_base_uncased"
+base_dir = "train_dataset_externalcv_210606"
+name = "TokenBinaryClass_bert_base_uncased_12hiddenout_clsw10_semisupervise"
 base_pretrained = "bert-base-uncased"
 plot_label = "bert-base-uncased-linear_rand-frac-0.0"
 
 t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/preprocess_data/"
 
-preprocess_train_dir = os.path.join(t2_dir,"train_dataset_externalcv_210605","TokenBinaryClass_bert_base_uncased/","train/")
-#preprocess_test_dir = os.path.join(t2_dir,"train_dataset_externalcv_210605","TokenBinaryClass_bert_base_uncased/","test_train_dataset_only/")
+#preprocess_train_dir = os.path.join(t2_dir,"train_dataset_externalcv_210605","TokenBinaryClass_bert_base_uncased/","train/")
+preprocess_train_dir = os.path.join(t2_dir,"train_dataset_externalcv_210605","TokenBinaryClass_bert_base_uncased/","train_filter_with_dataset_name/")
 preprocess_test_dir = os.path.join(t2_dir,"train_dataset_externalcv_210605","TokenBinaryClass_bert_base_uncased/","test/")
 
 result_dir = "/blue/avery/kinho.lo/kaggle-coleridgeinitiative-show-us-the-data/storage/results/"
 
 label_list = range(2)
 nlabel = len(label_list)
+cls1w = 10.
+
+assert cls1w > 1.
+class_weight = torch.tensor([1./(1.-1/cls1w),cls1w,]).to('cuda')
 
 # __________________________________________________________________ ||
 pipeline = TokenMultiClassifierPipeline()
 
-model = BertForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list))
+model = CustomBertForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list),output_hidden_states=True,class_weight=class_weight)
 
 tokenizer = BertTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
 
@@ -54,7 +59,7 @@ randomize_cfg = ObjDict(
 train_cfg = ObjDict(
         train_batch_size = 8,
         per_gpu_train_batch_size = 1,
-        val_batch_size = 128,
+        val_batch_size = 32,
         num_train_epochs = 3,
         learning_rate = 2e-5,
         betas=(0.9,0.999),
