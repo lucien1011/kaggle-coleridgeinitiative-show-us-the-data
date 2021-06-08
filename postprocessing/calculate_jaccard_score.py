@@ -71,7 +71,7 @@ if __name__ == "__main__":
     ids = torch.load(os.path.join(preprocess_dir,"input_ids.pt"))
     am = torch.load(os.path.join(preprocess_dir,"attention_mask.pt"))
     dm = torch.load(os.path.join(preprocess_dir,"dataset_masks.pt"))
-    t = BertTokenizerFast.from_pretrained(base_model)
+    t = cfg.tokenizer.from_pretrained(base_model)
     d = TensorDataset(ids,am,dm)
    
     checkpts = cfg.pipeline.get_model_checkpts(cfg.calculate_score_cfg.model_dir,args.model_key)
@@ -92,7 +92,8 @@ if __name__ == "__main__":
         
         sampler = RandomSampler(d)
         dataloader = DataLoader(d,batch_size=batch_size,sampler=sampler)
-        m = CustomBertForTokenClassification.from_pretrained(model_dir).to(device)
+        model_args = getattr(cfg,"model_args",{})
+        m = cfg.model.from_pretrained(model_dir,**model_args).to(device)
         
         tot_tp,tot_fp,tot_fn = 0,0,0
         ftext = open(output_path,"w")
