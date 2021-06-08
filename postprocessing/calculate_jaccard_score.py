@@ -30,6 +30,20 @@ def jaccard_similarity(s1, s2):
     union = (len(l1) + len(l2)) - intersection
     return float(intersection) / union
 
+def calculate_tp_fp_fn(pred_strs,true_strs):
+    tp = 0
+    for ts in true_strs:
+        jscores = [(i,jaccard_similarity(ps,ts)) for i,ps in enumerate(pred_strs)]
+        jscores.sort(key=lambda x: x[1],reverse=True)
+        if jscores and jscores[0][1] > 0.5:
+            tp += 1
+    fp = len(pred_strs)-tp
+    fn = len(true_strs)-tp
+    return tp,fp,fn
+
+def fbeta(tp,fp,fn,beta=0.5):
+    return tp/(tp + beta**2/(1.+beta**2)*fn + 1./(1.+beta**2)*fp)
+
 def split_list(ids):
     result = []
     tmp = []
@@ -80,7 +94,7 @@ if __name__ == "__main__":
         dataloader = DataLoader(d,batch_size=batch_size,sampler=sampler)
         m = CustomBertForTokenClassification.from_pretrained(model_dir).to(device)
         
-        jaccard_scores = []
+        tot_tp,tot_fp,tot_fn = 0,0,0
         ftext = open(output_path,"w")
         for step,batch in enumerate(tqdm(dataloader)):
             if step > args.nmax: continue
@@ -94,32 +108,34 @@ if __name__ == "__main__":
             for ind_t in inds:
                 ind = int(ind_t)
                 pred_tokens = t.batch_decode(split_list(batch_ids[ind]*pred_locs[ind]),skip_special_tokens=True)
-                pred_str = " ".join(pred_tokens)
+                pred_tokens = [ts for ts in pred_tokens if len(ts) >= 3]
+                pred_str = "|".join(pred_tokens)
                 true_tokens = t.batch_decode(split_list(batch_ids[ind]*batch_dm[ind]),skip_special_tokens=True)
-                true_str = " ".join(true_tokens)
-                jaccard_score = jaccard_similarity(pred_str,true_str)
-                jaccard_scores.append(jaccard_score)
+                true_str = "|".join(true_tokens)
+                tp,fp,fn = calculate_tp_fp_fn(pred_tokens,true_tokens)
+                tot_tp += tp
+                tot_fp += fp
+                tot_fn += fn
                 write_str = "\n".join([
                     header,
                     "Step "+str(step),
                     header,
                     "pred: "+pred_str,
                     "true: "+true_str,
-                    "jaccard score: "+str(jaccard_score),
                     " ",
                     ])
                 ftext.write(write_str)
         ftext.close()
-        avg_jacc_score = sum(jaccard_scores)/len(jaccard_scores)
-        print("Average score: ",str(avg_jacc_score))
+        fbeta_score = fbeta(tot_tp,tot_fp,tot_fn)
+        print("Average fbeta: ",str(fbeta_score))
         
         if args.plot_to_path:
             x.append(int(checkpt.replace(args.model_key,"")))
-            y.append(avg_jacc_score)
+            y.append(fbeta_score)
 
 if args.plot_to_path:
     fig,ax = plt.subplots()
     ax.plot(x,y)
-    ax.set_ylabel("Average Jaccard Score")
+    ax.set_ylabel("Average Fbeta Score")
     ax.set_xlabel("Epoch")
     fig.savefig(args.plot_to_path)
