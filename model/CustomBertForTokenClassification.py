@@ -14,6 +14,7 @@ class CustomBertForTokenClassification(BertPreTrainedModel):
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.num_hidden_layers*config.hidden_size, config.num_labels)
         self.class_weight = class_weight
+        self.dummy_param = nn.Parameter(torch.empty(0))
 
         self.init_weights()
 
@@ -55,7 +56,8 @@ class CustomBertForTokenClassification(BertPreTrainedModel):
 
         loss = None
         if labels is not None:
-            loss_fct = CrossEntropyLoss(weight=self.class_weight)
+            class_weight = torch.tensor(self.class_weight).to(self.dummy_param.device)
+            loss_fct = CrossEntropyLoss(weight=class_weight)
             # Only keep active parts of the loss
             if attention_mask is not None:
                 active_loss = attention_mask.view(-1) == 1
