@@ -305,7 +305,8 @@ class TokenMultiClassifierPipeline(Pipeline):
                 continue
             model = model.from_pretrained(os.path.join(args.model_dir,c)).to(args.device)
             model.eval()
-            dataloader = DataLoader(dataset, batch_size=args.batch_size)
+            data_sampler = RandomSampler(dataset)
+            dataloader = DataLoader(dataset, batch_size=args.batch_size,sampler=data_sampler,)
             iterator = tqdm(dataloader, desc="Iteration",)
             for step,batch in enumerate(iterator):
                 batch = tuple(t.to(args.device) for t in batch)
@@ -344,40 +345,38 @@ class TokenMultiClassifierPipeline(Pipeline):
                 torch.save(overflow_mapping,os.path.join(args.output_dir,c,"overflow_mapping_"+str(step)+extract_file_extension)) 
  
     def evaluate(self,inputs,model,args):
-        model = model.from_pretrained(args.pretrain_model).to(args.device)
-        dataset_inputs = torch.load(args.dataset_tokens_path)
-        test_sampler = RandomSampler(inputs.test_dataset)
-        test_dataloader = DataLoader(inputs.test_dataset, sampler=test_sampler, batch_size=args.batch_size)
-        with torch.no_grad():
-            dataset_emb = model(
-                    input_ids=dataset_inputs['input_ids'].to(args.device),
-                    attention_mask=dataset_inputs['attention_mask'].to(args.device),
-                    output_hidden_states=True,
-                    ).hidden_states[-1]
-            seq_length = int(dataset_emb.size(1))
+        checkpts = self.get_model_checkpts(args.model_dir,args.model_key)
+        mkdir_p(args.output_dir) 
+        dataset = getattr(inputs,args.val_dataset_name)
+        for c in checkpts:
+            self.print_message("Processing checkpoint "+c) 
+            cdir = os.path.join(args.output_dir,c)
+            mkdir_p(cdir)
+            if len(glob.glob(os.path.join(cdir,"*.pt"))) > 0: 
+                self.print_message("Skipping "+cdir)
+                continue
+            model = model.from_pretrained(os.path.join(args.model_dir,c)).to(args.device)
+            model.eval()
+            data_sampler = RandomSampler(dataset)
+            dataloader = DataLoader(dataset, batch_size=args.batch_size,sampler=data_sampler,)
+            iterator = tqdm(dataloader, desc="Iteration",)
+            scores = {}
+            for step,batch in enumerate(iterator):
+                if step > args.n_sample: continue
+                batch = tuple(t.to(args.device) for t in batch)
+                batch = self.patch_test_batch(batch)
+                if int(batch['labels'].sum()) == 0: continue
+                with torch.no_grad():
+                    preds = model(**batch)
+                metrics = self.compute_metrics(preds,batch['labels'],num_classes=model.num_labels)
+                for name,value in metrics.items():
+                    if name not in scores:
+                        scores[name] = {}
+                    else:
+                        scores[name][step] = value
 
-            min_context_sims = []
-            
-            for step, batch in enumerate(test_dataloader):
-                if step % args.print_per_step == 0:
-                    batch = tuple(t.to(args.device) for t in batch)
-                    batch_test = {"input_ids": batch[0],"attention_mask": batch[1], "output_hidden_states": True,}
-                    batch_model_out = model(**batch_test)
-                    
-                    _,pred_label_idx = torch.split((torch.argmax(batch_model_out.logits,axis=2)!=0).nonzero(),1,dim=1,)
-                    pred_label_idx = torch.squeeze(pred_label_idx)
-
-                    if pred_label_idx.numel():
-                        pred_label = torch.squeeze(batch_test['input_ids'])[pred_label_idx]
-                        min_context_sims.append(self.calculate_min_context_similarity(model,dataset_emb,pred_label,seq_length))
-            self.print_header()
-            print("minimum context similarity / number of prediction: {cos} / {npred:d}".format(
-                cos=str(torch.mean(torch.stack(min_context_sims))),
-                npred=len(min_context_sims),
-                )
-                )
-            self.print_header()
-
+            for name,value in scores.items():
+                print(name+": ",str(np.mean([float(m) for s,m in value.items()])))
 
     @classmethod
     def calculate_min_context_similarity(cls,model,dataset_emb,pred_label,seq_length):

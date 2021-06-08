@@ -4,10 +4,13 @@ import logging
 import random
 import time
 import numpy as np
+import pickle
 
 from transformers import AdamW, get_linear_schedule_with_warmup
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
 from tqdm import tqdm, trange
+
+from utils.mkdir_p import mkdir_p
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +70,7 @@ class Pipeline(object):
         return {"input_ids": batch[0],"attention_mask": batch[1],"labels": batch[2]}
 
     @classmethod
-    def custom_print_in_validation(cls,preds,labels):
+    def custom_print_in_validation(cls,batch,preds,labels):
         pass
 
     def train(self,inputs,model,args):
@@ -111,6 +114,8 @@ class Pipeline(object):
         model.zero_grad()
         train_iterator = trange(int(args.num_train_epochs), desc="Epoch",)
         self.set_seed(args)
+        training_log = {}
+        mkdir_p(args.output_dir)
         for epoch in train_iterator:
             epoch_iterator = tqdm(train_dataloader, desc="Iteration",)
             tr_loss_per_epoch = 0.0
@@ -164,6 +169,8 @@ class Pipeline(object):
                             "val loss {val_loss:4.4f}".format(val_loss=val_loss),
                             ] + ["val {metric} {value:4.4f}".format(metric=name,value=value) for name,value in metrics_val.items()]
                             ))
+                        training_log[global_step] = {"train_loss": loss.item(), "train_metrics": metrics_train, "val_loss": val_loss, "val_metrics": metrics_val,}
+                        pickle.dump(training_log,open(os.path.join(args.output_dir,"training_log.p"),"wb"))
 
                     if args.save_steps > 0 and global_step % args.save_steps == 0:
                         output_dir = os.path.join(args.output_dir, "checkpoint-step-{}".format(global_step))
@@ -177,7 +184,6 @@ class Pipeline(object):
             output_dir = os.path.join(args.output_dir,"checkpoint-epoch-{}".format(epoch))
             self.save_model(model,args,output_dir) 
             logger.info("Saving model checkpoint (per epoch) to %s", output_dir)
-
 
             if args.max_steps > 0 and global_step > args.max_steps:
                 train_iterator.close()
