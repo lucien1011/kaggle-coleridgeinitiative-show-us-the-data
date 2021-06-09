@@ -13,6 +13,7 @@ from transformers import BertTokenizerFast
 from utils.objdict import ObjDict
 
 header = "*"*100
+ofname = "fbeta_vs_epoch.png"
 
 # __________________________________________________________________ ||
 def parse_arguments():
@@ -21,6 +22,7 @@ def parse_arguments():
     parser.add_argument('--nmax',type=int,default=1e7)
     parser.add_argument('--model_key',type=str,default='checkpoint-epoch-')
     parser.add_argument('-p','--plot_to_path',type=str,default="")
+    parser.add_argument('--plot_to_model_dir',action='store_true')
     return parser.parse_args()
 
 def jaccard_similarity(s1, s2):
@@ -79,7 +81,7 @@ if __name__ == "__main__":
     assert all([c.replace(args.model_key,"").isdigit() for c in checkpts])
     checkpts.sort(key=lambda x: int(x.replace(args.model_key,"")))
 
-    if args.plot_to_path:
+    if args.plot_to_path or args.plot_to_model_dir:
         x,y = [],[]
 
     for checkpt in checkpts:
@@ -130,13 +132,16 @@ if __name__ == "__main__":
         fbeta_score = fbeta(tot_tp,tot_fp,tot_fn)
         print("Average fbeta: ",str(fbeta_score))
         
-        if args.plot_to_path:
+        if args.plot_to_path or args.plot_to_model_dir:
             x.append(int(checkpt.replace(args.model_key,"")))
             y.append(fbeta_score)
 
-if args.plot_to_path:
+if args.plot_to_path or args.plot_to_model_dir:
     fig,ax = plt.subplots()
     ax.plot(x,y)
     ax.set_ylabel("Average Fbeta Score")
     ax.set_xlabel("Epoch")
-    fig.savefig(args.plot_to_path)
+    if args.plot_to_path:
+        fig.savefig(args.plot_to_path)
+    elif args.plot_to_model_dir:
+        fig.savefig(os.path.join(cfg.calculate_score_cfg.model_dir,ofname))
