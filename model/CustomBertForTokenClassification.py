@@ -6,14 +6,18 @@ from transformers.modeling_outputs import TokenClassifierOutput
 
 class CustomBertForTokenClassification(BertPreTrainedModel):
 
-    def __init__(self, config , class_weight=None):
+    def __init__(self, config , class_weight=None, use_all_attention=True):
         super().__init__(config)
         self.num_labels = config.num_labels
 
         self.bert = BertModel(config, add_pooling_layer=False)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.classifier = nn.Linear(config.num_hidden_layers*config.hidden_size, config.num_labels)
         self.class_weight = class_weight
+        self.use_all_attention = use_all_attention
+        if self.use_all_attention:
+            self.classifier = nn.Linear(config.num_hidden_layers*config.hidden_size, config.num_labels)
+        else:
+            self.classifier = nn.Linear(config.hidden_size, config.num_labels)
         self.dummy_param = nn.Parameter(torch.empty(0))
 
         self.init_weights()
@@ -49,8 +53,11 @@ class CustomBertForTokenClassification(BertPreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-
-        sequence_output = torch.cat(outputs.hidden_states[1:],axis=2)
+        
+        if self.use_all_attention:
+            sequence_output = torch.cat(outputs.hidden_states[1:],axis=2)
+        else:
+            sequence_output = outputs[0]
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
 
