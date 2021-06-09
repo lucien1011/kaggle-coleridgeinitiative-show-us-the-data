@@ -43,6 +43,14 @@ def make_labels(input_ids,dataset_ids):
                 output[ind] = 1
     return output
 
+def make_labels_by_offset_mapping(offset_mapping,dataset_indices,seq_length):
+    output = [0 for _ in range(seq_length)] 
+    for dstart,dend in dataset_indices:
+        for i,(cstart,cend) in enumerate(offset_mapping):
+            if cstart >= dstart and cend <= dend:
+                output[i] = 1
+    return output
+
 class TokenMultiClassifierPipeline(Pipeline):
 
     @classmethod
@@ -56,13 +64,8 @@ class TokenMultiClassifierPipeline(Pipeline):
 
         pred_labels_flatten = pred_labels.flatten(0,1)
         labels_flatten = labels.flatten(0,1)
-
-        intersection = pred_labels * labels
-        union = pred_labels + labels - intersection
-        IoU = (intersection + smooth)/(union + smooth)
         
         return {
-            "IoU": IoU.mean(),
             "accuracy": accuracy(pred_labels_flatten,labels_flatten,num_classes=num_classes,average='micro',),
             "f1": f1(pred_labels_flatten,labels_flatten,num_classes=num_classes,average=average,)[-1],
             "precision": precision(pred_labels_flatten,labels_flatten,num_classes=num_classes,average=average,)[-1],
@@ -88,6 +91,8 @@ class TokenMultiClassifierPipeline(Pipeline):
                 labels_name = "labels.pt",
                 dataset_masks_name = "dataset_masks.pt",
                 overflow_to_sample_mapping_name = "overflow_to_sample_mapping.pt",
+                offset_mapping_name = "offset_mapping.pt",
+                create_by_offset_mapping = getattr(args,"create_by_offset_mapping",False),
                 )
         train_dataset = self.create_preprocess_data(train_args)
         inputs = ObjDict(
@@ -105,6 +110,8 @@ class TokenMultiClassifierPipeline(Pipeline):
                 labels_name = "labels.pt",
                 dataset_masks_name = "dataset_masks.pt",
                 overflow_to_sample_mapping_name = "overflow_to_sample_mapping.pt",
+                offset_mapping_name = "offset_mapping.pt",
+                create_by_offset_mapping = getattr(args,"create_by_offset_mapping",False),
                 )
         test_dataset = self.create_preprocess_data(test_args)
         inputs = ObjDict(
@@ -199,6 +206,15 @@ class TokenMultiClassifierPipeline(Pipeline):
         return dataset
 
     def create_preprocess_data(self,args):
+        create_by_offset_mapping = getattr(args,"create_by_offset_mapping",False)
+        if create_by_offset_mapping:
+            dataset = self.create_preprocess_data_by_offset_mapping(args)
+        else:
+            dataset = self.create_preprocess_data_default(args)
+        return dataset
+
+    def create_preprocess_data_default(self,args):
+        self.print_message("[create_preprocess_data_default]")
         tokenizer = args.tokenizer
         df = pd.read_csv(args.input_csv_path)
 
@@ -269,6 +285,96 @@ class TokenMultiClassifierPipeline(Pipeline):
             torch.save(tokenized_inputs['overflow_to_sample_mapping'],out_overflow_to_sample_mapping_path)
             torch.save(tokenized_inputs['labels'],out_labels_path)
             torch.save(tokenized_inputs['dataset_masks'],out_dataset_masks_path)
+        
+        dataset = TensorDataset(tokenized_inputs['input_ids'],tokenized_inputs['attention_mask'],tokenized_inputs['dataset_masks'],tokenized_inputs['labels'],)
+        return dataset
+
+    def create_preprocess_data_by_offset_mapping(self,args):
+        self.print_message("[create_preprocess_data_by_offset_mapping]")
+        tokenizer = args.tokenizer
+        df = pd.read_csv(args.input_csv_path)
+
+        out_input_ids_path = os.path.join(args.out_dir,args.input_ids_name)
+        out_attention_mask_path = os.path.join(args.out_dir,args.attention_mask_name)
+        out_overflow_to_sample_mapping_path = os.path.join(args.out_dir,args.overflow_to_sample_mapping_name)
+        out_labels_path = os.path.join(args.out_dir,args.labels_name)
+        out_dataset_masks_path = os.path.join(args.out_dir,args.dataset_masks_name)
+        out_offset_mapping_path = os.path.join(args.out_dir,args.offset_mapping_name)
+
+        out_file_paths = [out_input_ids_path,out_attention_mask_path,out_overflow_to_sample_mapping_path,out_labels_path,out_offset_mapping_path]
+        assert all([not os.path.exists(o) for o in out_file_paths])
+
+        self.print_header()
+        self.start_count_time("Tokenize")
+        print("Tokenize text ")
+        print("Dataframe shape: ",df.shape)
+        self.print_header()
+        tokenized_inputs = tokenizer(
+                df['text'].tolist(),
+                padding='max_length',
+                max_length=512,
+                truncation=True,
+                return_overflowing_tokens=True,
+                return_offsets_mapping=True,
+                return_tensors='pt',
+                )
+        self.print_elapsed_time("Tokenize")
+        self.print_header()
+
+        self.print_header()
+        print("Make labels")
+        self.print_header()
+        labels = []
+        dataset_masks = []
+        ntext = len(tokenized_inputs['overflow_to_sample_mapping'])
+        for i in tqdm(range(ntext)):
+
+            df_index = int(tokenized_inputs['overflow_to_sample_mapping'][i])
+            
+            train_datasets = df['train_dataset'][df_index]
+            external_datasets = df['external_dataset'][df_index]
+            
+            if not pd.isnull(train_datasets):
+                train_dataset_indices = []
+                train_datasets = train_datasets.split("|")
+                for td in train_datasets:
+                    start_index = df.text[df_index].index(td)
+                    end_index = start_index + len(td)
+                    train_dataset_indices.append((start_index,end_index))
+            else:
+                train_dataset_indices = []
+
+            if not pd.isnull(external_datasets):
+                external_dataset_indices = []
+                external_datasets = external_datasets.split("|")
+                for ed in external_datasets:
+                    print(df_index,ed)
+                    start_index = df.text[df_index].index(ed)
+                    end_index = start_index + len(ed)
+                    external_dataset_indices.append((start_index,end_index))
+            else:
+                external_dataset_indices = []
+
+            seq_length = len(tokenized_inputs.input_ids[i])
+            offset_mapping = tokenized_inputs.offset_mapping[i]
+            
+            labels.append(make_labels_by_offset_mapping(offset_mapping,train_dataset_indices,seq_length))
+            dataset_masks.append(make_labels_by_offset_mapping(offset_mapping,external_dataset_indices,seq_length))
+        
+        tokenized_inputs['labels'] = torch.tensor(labels)
+        tokenized_inputs['dataset_masks'] = torch.tensor(dataset_masks)
+
+        self.print_header()
+        print("Saving")
+        self.print_header()
+        if args.out_dir:
+            mkdir_p(args.out_dir)
+            torch.save(tokenized_inputs['input_ids'],out_input_ids_path)
+            torch.save(tokenized_inputs['attention_mask'],out_attention_mask_path)
+            torch.save(tokenized_inputs['overflow_to_sample_mapping'],out_overflow_to_sample_mapping_path)
+            torch.save(tokenized_inputs['labels'],out_labels_path)
+            torch.save(tokenized_inputs['dataset_masks'],out_dataset_masks_path)
+            torch.save(tokenized_inputs['offset_mapping'],out_offset_mapping_path)
         
         dataset = TensorDataset(tokenized_inputs['input_ids'],tokenized_inputs['attention_mask'],tokenized_inputs['dataset_masks'],tokenized_inputs['labels'],)
         return dataset
