@@ -9,19 +9,18 @@ from utils.objdict import ObjDict
 from postprocessing.tools import calculate_fbeta_tp_fp_fn_from_cfg_checkpoint
 
 header = "*"*100
-ofname = "fbeta_vs_epoch.png"
+ofname = "fbeta_vs_cut.png"
 
 # __________________________________________________________________ ||
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('input_path',type=str)
     parser.add_argument('--nmax',type=int,default=1e7)
-    parser.add_argument('--model_key',type=str,default='checkpoint-epoch-')
-    parser.add_argument('--cut',type=float,default=0.5)
+    parser.add_argument('--checkpoint',type=str,default='checkpoint-epoch-1')
+    parser.add_argument('--cuts',type=str,default="0.5")
     parser.add_argument('-p','--plot_to_path',type=str,default="")
     parser.add_argument('--plot_to_model_dir',action='store_true')
     return parser.parse_args()
-
 
 # __________________________________________________________________ ||
 if __name__ == "__main__":
@@ -30,21 +29,21 @@ if __name__ == "__main__":
 
     cfg = ObjDict.read_all_from_file_python3(args.input_path)
 
-    checkpts = cfg.pipeline.get_model_checkpts(cfg.calculate_score_cfg.model_dir,args.model_key)
-    assert len(checkpts) > 0
-    assert all([c.replace(args.model_key,"").isdigit() for c in checkpts])
-    checkpts.sort(key=lambda x: int(x.replace(args.model_key,"")))
+    cuts = [float(n) for n in args.cuts.split(",")]
+    assert len(cuts) > 0
+    assert all([type(c) == float for c in cuts])
+    cuts.sort()
 
     x,y = [],[]
-    for checkpt in checkpts:
-        fbeta_score,tot_tp,tot_fp,tot_fn = calculate_fbeta_tp_fp_fn_from_cfg_checkpoint(cfg,checkpoint,args.cut,args.nmax)
-        x.append(int(checkpt.replace(args.model_key,"")))
+    for cut in cuts:
+        fbeta_score,tot_tp,tot_fp,tot_fn = calculate_fbeta_tp_fp_fn_from_cfg_checkpoint(cfg,args.checkpoint,cut,args.nmax)
+        x.append(cut)
         y.append(fbeta_score)
 
     fig,ax = plt.subplots()
     ax.plot(x,y)
     ax.set_ylabel("Fbeta Score")
-    ax.set_xlabel("Epoch")
+    ax.set_xlabel("cut")
     if args.plot_to_path:
         fig.savefig(args.plot_to_path)
     elif args.plot_to_model_dir:
