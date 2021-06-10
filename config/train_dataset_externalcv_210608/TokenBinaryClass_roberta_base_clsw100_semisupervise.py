@@ -2,46 +2,58 @@ import os
 import numpy as np
 import torch
 
-from transformers import BertForTokenClassification,BertTokenizerFast,BertConfig,BertModel,BertConfig
+from model.CustomRobertaForTokenClassification import CustomRobertaForTokenClassification
+from transformers import RobertaTokenizerFast,RobertaConfig
 
 from pipeline.pipeline_tokenmulticlassifier import TokenMultiClassifierPipeline
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-base_dir = "train_dataset_externalcv_210603"
-name = "TokenBinaryClass_bert_base_uncased"
-base_pretrained = "bert-base-uncased"
+base_dir = "train_dataset_externalcv_210608"
+name = "TokenBinaryClass_roberta_base_clsw100_semisupervise"
+base_pretrained = "roberta-base"
 plot_label = "bert-base-uncased-linear_rand-frac-0.0"
 
 t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/preprocess_data/"
-#preprocess_train_dir = os.path.join(t2_dir,base_dir,name,"train/")
-preprocess_train_dir = os.path.join(t2_dir,base_dir,name+"_filter/","train/")
-preprocess_test_dir = os.path.join(t2_dir,base_dir,name,"test/")
+
+preprocess_train_dir = os.path.join(t2_dir,"train_dataset_externalcv_210608","TokenBinaryClass_roberta_base_clsw100_semisupervise","train/")
+#preprocess_train_dir = os.path.join(t2_dir,"train_dataset_externalcv_210608","TokenBinaryClass_roberta_base_clsw100_semisupervise","train_filter_by_train_dataset/")
+preprocess_test_dir = os.path.join(t2_dir,"train_dataset_externalcv_210608","TokenBinaryClass_roberta_base_clsw100_semisupervise","test/")
 
 result_dir = "/blue/avery/kinho.lo/kaggle-coleridgeinitiative-show-us-the-data/storage/results/"
 
 label_list = range(2)
 nlabel = len(label_list)
+cls1w = 100.
+
+assert cls1w > 1.
+class_weight = [1./(1.-1/cls1w),cls1w,]
 
 # __________________________________________________________________ ||
 pipeline = TokenMultiClassifierPipeline()
 
-model = BertForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list),hidden_dropout_prob=0.5)
+model_args = {
+        "class_weight": class_weight,
+        "use_all_attention": False,
+        }
+model = CustomRobertaForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list),output_hidden_states=True,class_weight=class_weight,use_all_attention=False)
 
-tokenizer = BertTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
+tokenizer = RobertaTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
 
 # __________________________________________________________________ ||
 preprocess_cfg = ObjDict(
         tokenizer = tokenizer,
-        train_csv_path = "storage/input/combine_dataset/train_sequence.csv",
+        train_csv_path = "storage/input/pack_data_210607/train_sequence.csv",
         preprocess_train_dir = preprocess_train_dir,
-        test_csv_path = 'storage/input/combine_dataset/test_sequence.csv',
+        test_csv_path = 'storage/input/pack_data_210607/test_sequence.csv',
         preprocess_test_dir = preprocess_test_dir,
         input_ids_name = "input_ids.pt",
         attention_mask_name = "attention_mask.pt",
         labels_name = "labels.pt",
         dataset_masks_name = "dataset_masks.pt",
         overflow_to_sample_mapping_name = "overflow_to_sample_mapping.pt",
+        offset_mapping_name = "offset_mapping.pt",
+        create_by_offset_mapping = True,
         )
 
 # __________________________________________________________________ ||
@@ -53,8 +65,8 @@ randomize_cfg = ObjDict(
 train_cfg = ObjDict(
         train_batch_size = 8,
         per_gpu_train_batch_size = 1,
-        val_batch_size = 128,
-        num_train_epochs = 3,
+        val_batch_size = 32,
+        num_train_epochs = 10,
         learning_rate = 2e-5,
         betas=(0.9,0.999),
         adam_epsilon = 1e-9,
@@ -80,7 +92,7 @@ predict_cfg = ObjDict(
         output_dir = os.path.join(result_dir,base_dir,name,"pred/"),
         pred_name = "labels",
         pred_extension = ".pt",
-        val_dataset_name = "test_dataset",
+        val_dataset_name = "val_dataset",
         )
 
 # __________________________________________________________________ ||
@@ -89,9 +101,21 @@ extract_cfg = ObjDict(
         model_key = 'checkpoint-epoch-',
         device = "cuda",
         batch_size = 256,
-        output_dir = os.path.join(t2_dir,base_dir,name,"extract/"),
+        output_dir = os.path.join(result_dir,base_dir,name,"extract/"),
         extract_file_name = "pred_ids.pt",
-        dataset_name = "test_dataset",
+        val_dataset_name = "val_dataset",
+        )
+
+# __________________________________________________________________ ||
+evaluate_cfg = ObjDict(
+        model_dir = os.path.join(result_dir,base_dir,name,),
+        model_key = 'checkpoint-epoch-',
+        device = "cuda",
+        batch_size = 64,
+        n_sample = 100,
+        output_dir = os.path.join(result_dir,base_dir,name,"extract/"),
+        extract_file_name = "pred_ids.pt",
+        val_dataset_name = "val_dataset",
         )
 
 # __________________________________________________________________ ||
@@ -99,8 +123,10 @@ calculate_score_cfg = ObjDict(
         model_dir = os.path.join(result_dir,base_dir,name,),
         model_key = 'checkpoint-epoch-2',
         device = "cuda",
-        batch_size = 64,
+        batch_size = 128,
+        n_sample = 100,
         )
+
 # __________________________________________________________________ ||
 slurm_job_dir = os.path.join(result_dir,base_dir,name+"/")
 slurm_cfg = ObjDict(
