@@ -32,7 +32,8 @@ class_weight = [1./(1.-1/cls1w),cls1w,]
 # __________________________________________________________________ ||
 pipeline = TokenMultiClassifierPipeline()
 
-model = CustomBertForTokenClassification.from_pretrained('model/'+base_pretrained,num_labels=len(label_list),output_hidden_states=True,use_all_attention=False,class_weight=class_weight)
+model_args = dict(num_labels=len(label_list),output_hidden_states=True,use_all_attention=False,class_weight=class_weight)
+model = CustomBertForTokenClassification.from_pretrained('model/'+base_pretrained,**model_args)
 
 tokenizer = BertTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
 
