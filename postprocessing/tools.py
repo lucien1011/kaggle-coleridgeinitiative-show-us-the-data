@@ -36,7 +36,8 @@ def calculate_fbeta_tp_fp_fn_from_cfg_checkpoint(cfg,checkpt,cut=0.5,nmax=100):
     dataloader = DataLoader(d,batch_size=batch_size,sampler=sampler)
     model_args = getattr(cfg,"model_args",{})
     m = cfg.model.from_pretrained(model_dir,**model_args).to(device)
-    
+    m.eval()
+
     tot_tp,tot_fp,tot_fn = 0,0,0
     for step,batch in enumerate(tqdm(dataloader)):
         if step > nmax: continue
