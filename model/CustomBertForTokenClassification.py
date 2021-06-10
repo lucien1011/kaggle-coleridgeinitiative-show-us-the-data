@@ -63,7 +63,7 @@ class CustomBertForTokenClassification(BertPreTrainedModel):
 
         loss = None
         if labels is not None:
-            class_weight = torch.tensor(self.class_weight).to(self.dummy_param.device)
+            class_weight = torch.tensor(self.class_weight).to(self.dummy_param.device) if self.class_weight else None
             loss_fct = CrossEntropyLoss(weight=class_weight)
             # Only keep active parts of the loss
             if attention_mask is not None:
