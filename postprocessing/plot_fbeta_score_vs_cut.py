@@ -32,6 +32,7 @@ if __name__ == "__main__":
     cuts = [float(n) for n in args.cuts.split(",")]
     assert len(cuts) > 0
     assert all([type(c) == float for c in cuts])
+    assert args.plot_to_path or args.plot_to_model_dir
     cuts.sort()
 
     x,y = [],[]

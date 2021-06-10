@@ -35,14 +35,17 @@ if __name__ == "__main__":
     assert all([c.replace(args.model_key,"").isdigit() for c in checkpts])
     checkpts.sort(key=lambda x: int(x.replace(args.model_key,"")))
 
-    x,y = [],[]
+    xs,ys = [],[]
     for checkpt in checkpts:
-        fbeta_score,tot_tp,tot_fp,tot_fn = calculate_fbeta_tp_fp_fn_from_cfg_checkpoint(cfg,checkpoint,args.cut,args.nmax)
-        x.append(int(checkpt.replace(args.model_key,"")))
-        y.append(fbeta_score)
+        fbeta_score,tot_tp,tot_fp,tot_fn = calculate_fbeta_tp_fp_fn_from_cfg_checkpoint(cfg,checkpt,args.cut,args.nmax)
+        x = int(checkpt.replace(args.model_key,""))
+        y = fbeta_score
+        print(checkpt,x,y)
+        xs.append(x)
+        ys.append(y)
 
     fig,ax = plt.subplots()
-    ax.plot(x,y)
+    ax.plot(xs,ys)
     ax.set_ylabel("Fbeta Score")
     ax.set_xlabel("Epoch")
     if args.plot_to_path:
