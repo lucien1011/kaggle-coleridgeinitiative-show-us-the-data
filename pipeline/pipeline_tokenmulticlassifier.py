@@ -6,6 +6,7 @@ import logging
 import random
 import numpy as np
 import pandas as pd
+import bisect
 
 from transformers import AdamW, get_linear_schedule_with_warmup
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
@@ -45,10 +46,11 @@ def make_labels(input_ids,dataset_ids):
 
 def make_labels_by_offset_mapping(offset_mapping,dataset_indices,seq_length):
     output = [0 for _ in range(seq_length)] 
+    start_indices,end_indices = map(list,zip(*offset_mapping))
     for dstart,dend in dataset_indices:
-        for i,(cstart,cend) in enumerate(offset_mapping):
-            if cstart >= dstart and cend <= dend:
-                output[i] = 1
+        start_index = bisect.bisect_left(start_indices,dstart)
+        end_index = bisect.bisect_right(end_indices,dend)
+        output[start_index:end_index] = [1 for _ in range(start_index,end_index)]
     return output
 
 class TokenMultiClassifierPipeline(Pipeline):
@@ -302,7 +304,7 @@ class TokenMultiClassifierPipeline(Pipeline):
         out_offset_mapping_path = os.path.join(args.out_dir,args.offset_mapping_name)
 
         out_file_paths = [out_input_ids_path,out_attention_mask_path,out_overflow_to_sample_mapping_path,out_labels_path,out_offset_mapping_path]
-        assert all([not os.path.exists(o) for o in out_file_paths])
+        assert all([not os.path.exists(o) for o in out_file_paths]), "preprocess data exists, please delete before create_preprocess_data"
 
         self.print_header()
         self.start_count_time("Tokenize")
@@ -348,7 +350,6 @@ class TokenMultiClassifierPipeline(Pipeline):
                 external_dataset_indices = []
                 external_datasets = external_datasets.split("|")
                 for ed in external_datasets:
-                    print(df_index,ed)
                     start_index = df.text[df_index].index(ed)
                     end_index = start_index + len(ed)
                     external_dataset_indices.append((start_index,end_index))
@@ -356,7 +357,7 @@ class TokenMultiClassifierPipeline(Pipeline):
                 external_dataset_indices = []
 
             seq_length = len(tokenized_inputs.input_ids[i])
-            offset_mapping = tokenized_inputs.offset_mapping[i]
+            offset_mapping = tokenized_inputs.offset_mapping[i].tolist()
             
             labels.append(make_labels_by_offset_mapping(offset_mapping,train_dataset_indices,seq_length))
             dataset_masks.append(make_labels_by_offset_mapping(offset_mapping,external_dataset_indices,seq_length))
