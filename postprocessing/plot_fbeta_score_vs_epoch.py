@@ -18,6 +18,7 @@ def parse_arguments():
     parser.add_argument('--nmax',type=int,default=1e7)
     parser.add_argument('--model_key',type=str,default='checkpoint-epoch-')
     parser.add_argument('--cut',type=float,default=0.5)
+    parser.add_argument('--plot_per_checkpt',type=int,default=1)
     parser.add_argument('-p','--plot_to_path',type=str,default="")
     parser.add_argument('--plot_to_model_dir',action='store_true')
     return parser.parse_args()
@@ -36,7 +37,8 @@ if __name__ == "__main__":
     checkpts.sort(key=lambda x: int(x.replace(args.model_key,"")))
 
     xs,ys = [],[]
-    for checkpt in checkpts:
+    for ic,checkpt in enumerate(checkpts):
+        if ic % args.plot_per_checkpt != 0: continue
         fbeta_score,tot_tp,tot_fp,tot_fn = calculate_fbeta_tp_fp_fn_from_cfg_checkpoint(cfg,checkpt,args.cut,args.nmax)
         x = int(checkpt.replace(args.model_key,""))
         y = fbeta_score
