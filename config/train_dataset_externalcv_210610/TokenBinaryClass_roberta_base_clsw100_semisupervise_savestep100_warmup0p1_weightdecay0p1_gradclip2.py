@@ -19,6 +19,7 @@ t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coler
 #preprocess_train_dir = os.path.join(t2_dir,"train_dataset_externalcv_210610","TokenBinaryClass_roberta_base","train/")
 preprocess_train_dir = os.path.join(t2_dir,"train_dataset_externalcv_210610","TokenBinaryClass_roberta_base","train_filter_by_train_dataset/")
 preprocess_test_dir = os.path.join(t2_dir,"train_dataset_externalcv_210610","TokenBinaryClass_roberta_base","test/")
+preprocess_val_dir = os.path.join(t2_dir,"train_dataset_externalcv_210610","TokenBinaryClass_roberta_base","val/")
 
 result_dir = "/blue/avery/kinho.lo/kaggle-coleridgeinitiative-show-us-the-data/storage/results/"
 
