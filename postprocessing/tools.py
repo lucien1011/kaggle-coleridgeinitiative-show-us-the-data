@@ -69,3 +69,27 @@ def calculate_fbeta_tp_fp_fn_from_cfg_checkpoint(cfg,checkpt,cut=0.5,nmax=100):
                 ])
     fbeta_score = fbeta(tot_tp,tot_fp,tot_fn)
     return fbeta_score,tot_tp,tot_fp,tot_fn
+
+def read_dataset(cfg):
+    device              = cfg.calculate_score_cfg.device
+    batch_size          = cfg.calculate_score_cfg.batch_size 
+    preprocess_dir      = cfg.preprocess_test_dir
+
+    ids = torch.load(os.path.join(preprocess_dir,"input_ids.pt"))
+    am = torch.load(os.path.join(preprocess_dir,"attention_mask.pt"))
+    dm = torch.load(os.path.join(preprocess_dir,"dataset_masks.pt"))
+    d = TensorDataset(ids,am,dm)
+    return d
+
+def extract_text_from_batch(batch_ids,batch_am,batch_labels,model,tokenizer,cut):
+    with torch.no_grad():
+        o = model(input_ids=batch_ids,attention_mask=batch_am)
+    inds = batch_labels.sum(axis=1).nonzero()
+    pred_locs = (torch.nn.functional.softmax(o.logits,dim=2)[:,:,1] > cut).long()
+    pred_strs = []
+    for ind_t in inds:
+        ind = int(ind_t)
+        pred_tokens = tokenizer.batch_decode(split_list(batch_ids[ind]*pred_locs[ind]),skip_special_tokens=True)
+        pred_str = "|".join([t for t in pred_tokens if t])
+        if pred_str: pred_strs.append(pred_str)
+    return pred_strs
