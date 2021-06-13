@@ -4,7 +4,7 @@ import argparse
 from torch.utils.data import DataLoader,TensorDataset,RandomSampler
 
 from utils.objdict import ObjDict
-from postprocessing.tools import read_dataset,extract_text_from_batch
+from postprocessing.tools import read_dataset,extract_text_from_pred,extract_text_from_labels
 
 header = "*"*100
 
@@ -41,8 +41,10 @@ if __name__ == "__main__":
         batch_ids = batch[0].to(args.device)
         batch_am = batch[1].to(args.device)
         batch_labels = batch[2].to(args.device)
-        pred_strs = extract_text_from_batch(batch_ids,batch_am,batch_labels,m,tokenizer,args.cut)
-        if pred_strs:
+        pred_strs,pred_indices = extract_text_from_pred(batch_ids,batch_am,m,tokenizer,args.cut)
+        true_strs,true_indices = extract_text_from_labels(batch_ids,batch_am,batch_labels,tokenizer,args.cut)
+        if pred_strs or true_strs:
             print(header)
-            print(pred_strs)
+            print("Pred: ",[(i,s) for i,s in zip(pred_indices,pred_strs)])
+            print("True: ",[(i,s) for i,s in zip(true_indices,true_strs)])
             print(header)

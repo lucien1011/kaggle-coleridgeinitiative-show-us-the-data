@@ -1,6 +1,6 @@
 import os
 import torch
-from torch.utils.data import DataLoader,TensorDataset,RandomSampler
+from torch.utils.data import DataLoader,TensorDataset,RandomSampler,SequentialSampler
 from tqdm import tqdm
 
 from metrics.kaggle import jaccard_similarity,calculate_tp_fp_fn,fbeta
@@ -81,15 +81,37 @@ def read_dataset(cfg):
     d = TensorDataset(ids,am,dm)
     return d
 
-def extract_text_from_batch(batch_ids,batch_am,batch_labels,model,tokenizer,cut):
-    with torch.no_grad():
-        o = model(input_ids=batch_ids,attention_mask=batch_am)
-    inds = batch_labels.sum(axis=1).nonzero()
-    pred_locs = (torch.nn.functional.softmax(o.logits,dim=2)[:,:,1] > cut).long()
+def extract_text_from_pred(batch_ids,batch_am,model,tokenizer,cut,batch_size=128):
+    outputs = []
+    dataset = TensorDataset(batch_ids,batch_am)
+    dataloader = DataLoader(dataset,batch_size=batch_size)
+    for batch in dataloader:
+        with torch.no_grad():
+            output = model(input_ids=batch[0],attention_mask=batch[1])
+        outputs.append(output.logits)
+    outputs = torch.cat(outputs,axis=0)
+    pred_locs = (torch.nn.functional.softmax(outputs,dim=2)[:,:,1] > cut).long()
+    inds = pred_locs.sum(axis=1).nonzero()
     pred_strs = []
+    pred_indices = []
     for ind_t in inds:
         ind = int(ind_t)
         pred_tokens = tokenizer.batch_decode(split_list(batch_ids[ind]*pred_locs[ind]),skip_special_tokens=True)
         pred_str = "|".join([t for t in pred_tokens if t])
-        if pred_str: pred_strs.append(pred_str)
-    return pred_strs
+        if pred_str: 
+            pred_strs.append(pred_str)
+            pred_indices.append(ind)
+    return pred_strs,pred_indices
+
+def extract_text_from_labels(batch_ids,batch_am,batch_labels,tokenizer,cut):
+    inds = batch_labels.sum(axis=1).nonzero()
+    true_strs = []
+    true_indices = []
+    for ind_t in inds:
+        ind = int(ind_t)
+        true_tokens = tokenizer.batch_decode(split_list(batch_ids[ind]*batch_labels[ind]),skip_special_tokens=True)
+        true_str = "|".join([t for t in true_tokens if t])
+        if true_str: 
+            true_strs.append(true_str)
+            true_indices.append(ind)
+    return true_strs,true_indices
