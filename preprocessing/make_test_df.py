@@ -49,20 +49,18 @@ if __name__ == "__main__":
         text = remove_reference(text)
 
         textId = int(fname.replace(".txt",""))
+        clean_val_datasets = []
+        val_datasets = []
+        for d,info in dataset_unique_map.items():
+            if d in text:
+                if any([td in d for td in train_dataset_names]): continue
+                val_datasets.append(d)
+                clean_val_datasets.append(clean_text(d))
+
+        outdict["external_dataset"].append("|".join(list(set(clean_val_datasets))))
+        outdict["orig_external_dataset"].append("|".join(list(set(val_datasets))))
         outdict["train_dataset"].append("|".join([clean_text(d) for d in train_dataset_names if d in text]))
-        clean_datasets = []
-        if textId in pub_to_dataset_map:
-            orig_dataset_names = pub_to_dataset_map[textId]
-            for orig_dataset_name in orig_dataset_names:
-                if orig_dataset_name not in dataset_unique_map: continue
-                text = text.replace(orig_dataset_name,dataset_unique_map[orig_dataset_name]['title'])
-                clean_datasets.append(clean_text(dataset_unique_map[orig_dataset_name]['title']))
-
-        outdict['text'].append(clean_text(text))
-        outdict['id'].append(fname)
-
-        dataset_str = "|".join(list(set((clean_datasets))))
-        outdict['external_dataset'].append(dataset_str)
+        outdict["text"].append(clean_text(text))
 
     mkdir_p(args.output_dir)
     df = pd.DataFrame(outdict)

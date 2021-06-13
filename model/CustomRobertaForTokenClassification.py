@@ -33,6 +33,7 @@ class CustomRobertaForTokenClassification(BertPreTrainedModel):
         head_mask=None,
         inputs_embeds=None,
         labels=None,
+        sample_weight=None,
     ):
 
         outputs = self.roberta(
@@ -53,6 +54,7 @@ class CustomRobertaForTokenClassification(BertPreTrainedModel):
 
         loss = None
         if labels is not None:
+            reduction = 'mean' if sample_weight is None else 'none'
             class_weight = torch.tensor(self.class_weight).to(self.dummy_param.device)
             loss_fct = CrossEntropyLoss(weight=class_weight)
             # Only keep active parts of the loss
@@ -65,6 +67,10 @@ class CustomRobertaForTokenClassification(BertPreTrainedModel):
                 loss = loss_fct(active_logits, active_labels)
             else:
                 loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+
+            if sample_weight is not None:
+                loss = loss * sample_weight
+                loss = loss.mean()
 
         return TokenClassifierOutput(
             loss=loss,

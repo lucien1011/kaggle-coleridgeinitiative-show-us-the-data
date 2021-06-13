@@ -34,19 +34,23 @@ if __name__ == "__main__":
         fid = fname.replace(".json","")
         contents = json_to_list(fid)
         text = " ".join(contents)
+        cleaned_text = clean_text(text)
         out_dict["id"].append(fid)
-        out_dict["train_dataset"].append("|".join([clean_text(d) for d in train_dataset_names if d in text]))
         clean_val_datasets = []
         val_datasets = []
         for d,info in dataset_unique_map.items():
             if d in text:
                 if any([td in d for td in train_dataset_names]): continue
                 val_datasets.append(d)
-                clean_val_datasets.append(info['unique_dataset_name'])
-                text = text.replace(d,info['unique_dataset_name'])
+                #clean_val_datasets.append(info['unique_dataset_name'])
+                #text = text.replace(d,info['unique_dataset_name'])
+            cleaned_d = clean_text(d)
+            if cleaned_d in cleaned_text:
+                clean_val_datasets.append(cleaned_d)
         out_dict["external_dataset"].append("|".join(list(set(clean_val_datasets))))
         out_dict["orig_external_dataset"].append("|".join(list(set(val_datasets))))
-        out_dict["text"].append(clean_text(text))
+        out_dict["train_dataset"].append("|".join([clean_text(d) for d in train_dataset_names if d in cleaned_text]))
+        out_dict["text"].append(cleaned_text)
 
     mkdir_p(args.output_dir)
     out_df = pd.DataFrame(out_dict)

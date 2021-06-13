@@ -34,17 +34,18 @@ if __name__ == "__main__":
         contents = json_to_list(fid)
         text = " ".join(contents)
         out_dict["id"].append(fid)
-        out_dict["train_dataset"].append("|".join([clean_text(d) for d in train_dataset_names if d in text]))
         clean_val_datasets = []
         val_datasets = []
         for d,info in dataset_unique_map.items():
             if d in text:
                 if any([td in d for td in train_dataset_names]): continue
                 val_datasets.append(d)
-                clean_val_datasets.append(info['unique_dataset_name'])
-                text = text.replace(d,info['unique_dataset_name'])
+                #clean_val_datasets.append(info['unique_dataset_name'])
+                #text = text.replace(d,info['unique_dataset_name'])
+                clean_val_datasets.append(clean_text(d))
         out_dict["external_dataset"].append("|".join(list(set(clean_val_datasets))))
         out_dict["orig_external_dataset"].append("|".join(list(set(val_datasets))))
+        out_dict["train_dataset"].append("|".join([clean_text(d) for d in train_dataset_names if d in text]))
         out_dict["text"].append(clean_text(text))
 
     mkdir_p(args.output_dir)

@@ -73,6 +73,17 @@ class Pipeline(object):
     def custom_print_in_validation(cls,batch,preds,labels):
         pass
 
+    def tokenize_df(self,tokenizer,texts,tokenize_args):
+        self.print_header()
+        self.start_count_time("Tokenize")
+        print("Tokenize text ")
+        print("Dataframe shape: ",len(texts))
+        self.print_header()
+        tokenized_inputs = tokenizer(texts,**tokenize_args)
+        self.print_elapsed_time("Tokenize")
+        self.print_header()
+        return tokenized_inputs
+
     def train(self,inputs,model,args):
         model.to(args.device)
         if not args.train_batch_size:
