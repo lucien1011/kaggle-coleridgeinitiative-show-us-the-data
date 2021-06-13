@@ -9,6 +9,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('input_dir',type=str)
     parser.add_argument('output_dir',type=str)
+    parser.add_argument('--add_pred_labels',action='store_true')
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -21,8 +22,12 @@ if __name__ == "__main__":
     dataset_masks = torch.load(os.path.join(args.input_dir,"dataset_masks.pt"))
     sample_weight = torch.load(os.path.join(args.input_dir,"sample_weight.pt"))
     labels = torch.load(os.path.join(args.input_dir,"labels.pt"))
-
-    idx = labels.sum(axis=1).nonzero().squeeze()
+    
+    if args.add_pred_labels:
+        pred_labels = torch.load(os.path.join(args.input_dir,"pred_labels.pt"))
+        idx = torch.maximum(labels,pred_labels).sum(axis=1).nonzero().squeeze()
+    else:
+        idx = labels.sum(axis=1).nonzero().squeeze()
 
     input_ids = input_ids[idx]
     attention_mask = attention_mask[idx]
@@ -30,6 +35,9 @@ if __name__ == "__main__":
     dataset_masks = dataset_masks[idx]
     sample_weight = sample_weight[idx]
     labels = labels[idx]
+
+    if args.add_pred_labels:
+        pred_labels = pred_labels[idx]
 
     mkdir_p(args.output_dir)
 
@@ -39,3 +47,5 @@ if __name__ == "__main__":
     torch.save(dataset_masks,os.path.join(args.output_dir,"dataset_masks.pt"))
     torch.save(sample_weight,os.path.join(args.output_dir,"sample_weight.pt"))
     torch.save(labels,os.path.join(args.output_dir,"labels.pt"))
+    if args.add_pred_labels:
+        torch.save(pred_labels,os.path.join(args.output_dir,"pred_labels.pt"))
