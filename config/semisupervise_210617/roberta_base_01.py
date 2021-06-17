@@ -44,7 +44,7 @@ preprocess_cfg = ObjDict(
         tokenizer = tokenizer,
         train_csv_path = 'storage/input/pack_data_210610/train_sequence.csv',
         preprocess_train_dir = preprocess_train_dir,
-        test_csv_path = 'storage/input/pack_data_210610/val_sequence.csv',
+        test_csv_path = 'storage/input/pack_data_210610/test_sequence.csv',
         preprocess_test_dir = preprocess_test_dir,
 
         input_ids_name = "input_ids.pt",
@@ -54,7 +54,7 @@ preprocess_cfg = ObjDict(
         dataset_masks_name = "dataset_masks.pt",
         offset_mapping_name = "offset_mapping.pt",
         overflow_to_sample_mapping_name = "overflow_to_sample_mapping.pt",
-        sample_weight_name = "sample_weight.pt",
+        sample_weight_nare = "sample_weight.pt",
         
         create_by_offset_mapping = True,
 
@@ -64,24 +64,25 @@ preprocess_cfg = ObjDict(
 # __________________________________________________________________ ||
 train_cfg = ObjDict(
         train_batch_size = 4,
-        val_batch_size = 8,
+        val_batch_size = 128,
         num_train_epochs = 1,
-        learning_rate = 2e-5,
+        learning_rate = 5e-6,
         betas=(0.9,0.999),
         adam_epsilon = 1e-9,
-        weight_decay = 0.1,
+        weight_decay = 0.01,
         warmup_steps = 0.1,
         seed = 1,
         device = 'cuda',
-        max_grad_norm = 2.,
+        max_grad_norm = -1,
         save_steps = 100,
+        max_steps = 200,
         output_dir = os.path.join(result_dir,base_dir,name),
         logging_steps = 100,
         no_decay = ["bias","LayerNorm.weight"],
         scheduler_type = "get_linear_schedule_with_warmup",
         sampler_type = "RandomSampler",
         niter = 2,
-        threshold = 0.95,
+        threshold = 0.5,
         )
 optimizer_grouped_parameters = [
         {"params": [p for n, p in model.named_parameters() if not any(nd in n for nd in train_cfg.no_decay)],"weight_decay": train_cfg.weight_decay},
