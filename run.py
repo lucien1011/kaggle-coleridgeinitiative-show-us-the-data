@@ -15,9 +15,7 @@ job_keywords = [
         "include_external_dataset_as_label_test",
         "mask_test_dataset_name_train",
         "train",
-        "predict",
-        "evaluate",
-        "extract",
+        "semisupervise_train",
         ]
 
 def parse_arguments():
@@ -66,3 +64,6 @@ if __name__ == "__main__":
 
     if "train" in jobs:
         cfg.trainer.train(inputs,cfg.model,cfg.train_cfg)
+
+    if "semisupervise_train" in jobs:
+        cfg.trainer.semisupervise_train(inputs,cfg.model,cfg.train_cfg)

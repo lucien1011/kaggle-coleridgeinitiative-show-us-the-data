@@ -17,7 +17,8 @@ base_pretrained = "roberta-base"
 
 t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coleridgeinitiative-show-us-the-data/preprocess_data/"
 
-preprocess_train_dir = os.path.join(t2_dir,base_dir,name,"train/")
+#preprocess_train_dir = os.path.join(t2_dir,base_dir,name,"train/")
+preprocess_train_dir = os.path.join(t2_dir,base_dir,name,"train_filter_by_train_labels/")
 preprocess_test_dir = os.path.join(t2_dir,base_dir,name,"test/")
 
 result_dir = "/blue/avery/kinho.lo/kaggle/kaggle-coleridgeinitiative-show-us-the-data/storage/results/"
@@ -79,6 +80,8 @@ train_cfg = ObjDict(
         no_decay = ["bias","LayerNorm.weight"],
         scheduler_type = "get_linear_schedule_with_warmup",
         sampler_type = "RandomSampler",
+        niter = 2,
+        threshold = 0.95,
         )
 optimizer_grouped_parameters = [
         {"params": [p for n, p in model.named_parameters() if not any(nd in n for nd in train_cfg.no_decay)],"weight_decay": train_cfg.weight_decay},
