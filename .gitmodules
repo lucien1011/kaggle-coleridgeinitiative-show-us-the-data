@@ -1,3 +1,6 @@
 [submodule "SLURMWorker"]
 	path = SLURMWorker
 	url = git@github.com:lucien1011/SLURMWorker.git
+[submodule "nlptools"]
+	path = nlptools
+	url = git@github.com:lucien1011/nlp-tools.git
