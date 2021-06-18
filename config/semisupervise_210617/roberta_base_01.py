@@ -4,7 +4,6 @@ import torch
 
 from model.CustomRobertaForTokenClassification import CustomRobertaForTokenClassification
 from transformers import RobertaTokenizerFast,RobertaConfig,RobertaModel,RobertaConfig
-from transformers import AdamW
 
 from pipeline.Preprocessor import Preprocessor 
 from pipeline.CustomTrainer import CustomTrainer 
@@ -35,7 +34,7 @@ preprocessor = Preprocessor()
 trainer = CustomTrainer()
 
 model_args = dict(num_labels=len(label_list),output_hidden_states=False,use_all_attention=False,class_weight=class_weight)
-model = CustomRobertaForTokenClassification.from_pretrained('model/'+base_pretrained,**model_args)
+model = CustomRobertaForTokenClassification.from_pretrained('model/'+base_pretrained,**model_args).to('cuda')
 
 tokenizer = RobertaTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
 
@@ -66,10 +65,6 @@ train_cfg = ObjDict(
         train_batch_size = 4,
         val_batch_size = 128,
         num_train_epochs = 1,
-        learning_rate = 5e-6,
-        betas=(0.9,0.999),
-        adam_epsilon = 1e-9,
-        weight_decay = 0.01,
         warmup_steps = 0.1,
         seed = 1,
         device = 'cuda',
@@ -78,22 +73,18 @@ train_cfg = ObjDict(
         max_steps = 200,
         output_dir = os.path.join(result_dir,base_dir,name),
         logging_steps = 100,
-        no_decay = ["bias","LayerNorm.weight"],
+        optimizer_type = "AdamW",
+        optimizer_args = ObjDict(
+            lr = 5e-6,
+            betas = (0.9,0.999),
+            eps = 1e-9,
+            weight_decay = 0.01,
+            no_decay = ["bias","LayerNorm.weight"],
+            ),
         scheduler_type = "get_linear_schedule_with_warmup",
         sampler_type = "RandomSampler",
         niter = 2,
         threshold = 0.5,
-        )
-optimizer_grouped_parameters = [
-        {"params": [p for n, p in model.named_parameters() if not any(nd in n for nd in train_cfg.no_decay)],"weight_decay": train_cfg.weight_decay},
-        {"params": [p for n, p in model.named_parameters() if any(nd in n for nd in train_cfg.no_decay)], "weight_decay": 0.0},
-        ]
-train_cfg.optimizer = AdamW(
-        optimizer_grouped_parameters,
-        lr=train_cfg.learning_rate, 
-        betas=train_cfg.betas,
-        eps=train_cfg.adam_epsilon,
-        weight_decay=train_cfg.weight_decay,
         )
 
 # __________________________________________________________________ ||
