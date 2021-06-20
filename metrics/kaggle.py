@@ -18,3 +18,13 @@ def calculate_tp_fp_fn(pred_strs,true_strs):
 
 def fbeta(tp,fp,fn,beta=0.5):
     return tp/(tp + beta**2/(1.+beta**2)*fn + 1./(1.+beta**2)*fp)
+
+def calculate_precision(pred_strs,true_strs):
+    tp = 0
+    for ps in pred_strs:
+        for ts in true_strs:
+            if jaccard_similarity(ps,ts) > 0.5:
+                tp += 1
+                break
+    fp = len(pred_strs)-tp
+    return tp,fp
