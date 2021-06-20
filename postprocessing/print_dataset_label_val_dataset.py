@@ -17,6 +17,7 @@ def parse_arguments():
     parser.add_argument('--device',type=str,default='cuda')
     parser.add_argument('--batch_size',type=int,default=8)
     parser.add_argument('--nmax',type=int,default=10)
+    parser.add_argument('--print_text',action='store_true')
     return parser.parse_args()
 
 # __________________________________________________________________ ||
@@ -47,4 +48,9 @@ if __name__ == "__main__":
             print(header)
             print("Pred: ",[(i,s) for i,s in zip(pred_indices,pred_strs)])
             print("True: ",[(i,s) for i,s in zip(true_indices,true_strs)])
+            if args.print_text:
+                for i in pred_indices:
+                    print("pred ",i,tokenizer.decode(batch_ids[i],skip_special_tokens=True))
+                for i in true_indices:
+                    print("true ",i,tokenizer.decode(batch_ids[i],skip_special_tokens=True))
             print(header)

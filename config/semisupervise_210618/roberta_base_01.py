@@ -10,7 +10,7 @@ from pipeline.CustomTrainer import CustomTrainer
 from utils.objdict import ObjDict
 
 # __________________________________________________________________ ||
-base_dir = "semisupervise_210617"
+base_dir = "semisupervise_210618"
 name = "roberta_base_01"
 base_pretrained = "roberta-base"
 
@@ -18,6 +18,7 @@ t2_dir = "/cmsuf/data/store/user/t2/users/klo/MiscStorage/ForLucien/Kaggle/coler
 
 #preprocess_train_dir = os.path.join(t2_dir,base_dir,name,"train/")
 preprocess_train_dir = os.path.join(t2_dir,base_dir,name,"train_filter_by_train_labels/")
+preprocess_val_dir = os.path.join(t2_dir,base_dir,name,"val/")
 preprocess_test_dir = os.path.join(t2_dir,base_dir,name,"test/")
 
 result_dir = "/blue/avery/kinho.lo/kaggle/kaggle-coleridgeinitiative-show-us-the-data/storage/results/"
@@ -41,9 +42,11 @@ tokenizer = RobertaTokenizerFast.from_pretrained('tokenizer/'+base_pretrained)
 # __________________________________________________________________ ||
 preprocess_cfg = ObjDict(
         tokenizer = tokenizer,
-        train_csv_path = 'storage/input/pack_data_210610/train_sequence.csv',
+        train_csv_path = 'storage/input/pack_data_210618/train_sequence.csv',
         preprocess_train_dir = preprocess_train_dir,
-        test_csv_path = 'storage/input/pack_data_210610/test_sequence.csv',
+        val_csv_path = 'storage/input/pack_data_210618/test_sequence.csv',
+        preprocess_val_dir = preprocess_val_dir,
+        test_csv_path = 'storage/input/pack_data_210618/val_sequence.csv',
         preprocess_test_dir = preprocess_test_dir,
 
         input_ids_name = "input_ids.pt",
@@ -53,7 +56,7 @@ preprocess_cfg = ObjDict(
         dataset_masks_name = "dataset_masks.pt",
         offset_mapping_name = "offset_mapping.pt",
         overflow_to_sample_mapping_name = "overflow_to_sample_mapping.pt",
-        sample_weight_nare = "sample_weight.pt",
+        sample_weight_name = "sample_weight.pt",
         
         create_by_offset_mapping = True,
 
@@ -83,8 +86,9 @@ train_cfg = ObjDict(
             ),
         scheduler_type = "get_linear_schedule_with_warmup",
         sampler_type = "RandomSampler",
-        niter = 2,
-        threshold = 0.95,
+        niter = 5r
+        #threshold = [0.95,0.97,0.99,0.999,0.999],
+        threshold = [0.95 for _ in range(5)],
         )
 
 # __________________________________________________________________ ||

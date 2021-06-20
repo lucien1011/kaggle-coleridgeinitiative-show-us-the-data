@@ -17,12 +17,15 @@ def parse_arguments():
     parser.add_argument('input_path',type=str)
     parser.add_argument('--nmax',type=int,default=1e7)
     parser.add_argument('--model_key',type=str,default='checkpoint-epoch-')
+    parser.add_argument('--model_dir',type=str,default='')
     parser.add_argument('--cut',type=float,default=0.5)
     parser.add_argument('--plot_per_checkpt',type=int,default=1)
     parser.add_argument('-p','--plot_to_path',type=str,default="")
     parser.add_argument('--plot_to_model_dir',action='store_true')
     return parser.parse_args()
 
+def get_model_checkpts(input_dir,key):
+    return [c for c in os.listdir(input_dir) if key in c and os.path.isdir(os.path.join(input_dir,c))]
 
 # __________________________________________________________________ ||
 if __name__ == "__main__":
@@ -31,7 +34,9 @@ if __name__ == "__main__":
 
     cfg = ObjDict.read_all_from_file_python3(args.input_path)
 
-    checkpts = cfg.pipeline.get_model_checkpts(cfg.calculate_score_cfg.model_dir,args.model_key)
+    if args.model_dir:
+        cfg.calculate_score_cfg.model_dir = args.model_dir
+    checkpts = get_model_checkpts(cfg.calculate_score_cfg.model_dir,args.model_key)
     assert len(checkpts) > 0
     assert all([c.replace(args.model_key,"").isdigit() for c in checkpts])
     checkpts.sort(key=lambda x: int(x.replace(args.model_key,"")))
